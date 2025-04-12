@@ -96,6 +96,8 @@ airflow_project/
 ├── docker-compose.yaml     
 ├── dockerfile      
 ├── requirements.txt        
-└── .env        
+└── .env       
+
+
 11. Для остановки контейнера используйте:  
 `docker compose down`
