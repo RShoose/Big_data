@@ -73,11 +73,11 @@
 7. Соберем образ:
     ```docker build -t cv-airflow .```
 
-    **Измените AIRFLOW_IMAGE_NAME в docker-compose.yaml на cv-airflow**
-   После сборки выполните инициализацию базы данных и пользователя:
-    ```docker-compose up airflow-init```
-   После успешной инициализации, запустите webserver и scheduler:
-   ``` docker-compose up -d```
+    **Измените AIRFLOW_IMAGE_NAME в docker-compose.yaml на cv-airflow**  
+   После сборки выполните инициализацию базы данных и пользователя:  
+    ```docker-compose up airflow-init```  
+   После успешной инициализации, запустите webserver и scheduler:  
+   ``` docker-compose up -d```  
 
 9. Создайте тестовый DAG в директории dags/
 
