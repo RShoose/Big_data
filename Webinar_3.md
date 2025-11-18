@@ -66,8 +66,8 @@
 |---------------|----------|------------|--------------|----------|
 | **NameNode** | Мастер-узел | Метаданные, FsImage, EditLog | Управление namespace, репликация | 9870 (Web) |
 | **DataNode** | Slave-узел | Блоки данных, checksums | Чтение/запись, heartbeat | 9866 (Data) |
-| **Secondary NN** | Помощник | Checkpoint'ы | Merge FsImage+EditLog | 9868 |
-| **JournalNode** | HA-поддержка | Shared EditLog | Синхронизация | 8485 |
+| **Secondary NN** | Помощник | Checkpoint'ы | Слияние FsImage+EditLog | 9868 |
+| **JournalNode** | HA-поддержка | Общий EditLog | Синхронизация | 8485 |
 
 ### **1.2. Ключевые концепции**
 
@@ -154,8 +154,10 @@
 
 ```bash
 # Проверка состояния процессов
-echo "=== Проверка процессов на NameNode ==="
-jps | grep -E "NameNode|SecondaryNameNode"
+echo "=== ПРОВЕРКА КЛАСТЕРА ==="
+docker exec namenode jps
+docker exec datanode1 jps
+docker exec -it namenode bash
 
 # Базовый мониторинг кластера
 echo "=== Общий отчет кластера ==="
@@ -231,21 +233,123 @@ echo "Web UI доступен по: http://$(hostname -I | awk '{print $1}'):987
 
 ### **Практическая часть**
 
+**Практическая часть: Добавление конфигурационных файлов в Hadoop-кластер**
+
+## Подготовка
 ```bash
-# Анализ текущей конфигурации
-cd /etc/hadoop/conf
-ls -la *.xml workers
-
-# Работа с core-site.xml
-hdfs getconf -confKey fs.defaultFS
-
-# Работа с hdfs-site.xml
-hdfs getconf -confKey dfs.replication
-hdfs getconf -confKey dfs.blocksize
-
-# Анализ файла workers
-cat workers
+cd ~/hadoop-clusters
+mkdir -p practice-configs
+cd practice-configs
 ```
+
+**Практическая часть: Добавление конфигурационных файлов в Hadoop-кластер**
+
+## Подготовка
+```bash
+cd ~/hadoop-clusters
+mkdir -p custom-configs
+cd ~/hadoop-clusters/custom-configs
+```
+
+## 1. Создаем конфигурационные файлы
+
+### core-site.xml
+```bash
+cat > core-site.xml << 'EOF'
+<?xml version="1.0"?>
+<configuration>
+  <property>
+    <name>fs.defaultFS</name>
+    <value>hdfs://namenode:9000</value>
+  </property>
+  <property>
+    <name>hadoop.tmp.dir</name>
+    <value>/tmp/hadoop-custom</value>
+  </property>
+  <property>
+    <name>custom.setting</name>
+    <value>webinar_demo</value>
+  </property>
+</configuration>
+EOF
+```
+
+### hdfs-site.xml
+```bash
+cat > hdfs-site.xml << 'EOF'
+<?xml version="1.0"?>
+<configuration>
+  <property>
+    <name>dfs.replication</name>
+    <value>2</value>
+  </property>
+  <property>
+    <name>dfs.blocksize</name>
+    <value>67108864</value>
+  </property>
+</configuration>
+EOF
+```
+
+## 2. Копируем конфиги в основные узлы
+
+```bash
+# Копируем в NameNode и DataNodes
+docker cp core-site.xml namenode:/opt/hadoop-3.2.1/etc/hadoop/core-site.xml
+docker cp hdfs-site.xml namenode:/opt/hadoop-3.2.1/etc/hadoop/hdfs-site.xml
+
+docker cp core-site.xml datanode1:/opt/hadoop-3.2.1/etc/hadoop/core-site.xml
+docker cp hdfs-site.xml datanode1:/opt/hadoop-3.2.1/etc/hadoop/hdfs-site.xml
+
+docker cp core-site.xml resourcemanager:/opt/hadoop-3.2.1/etc/hadoop/core-site.xml
+docker cp hdfs-site.xml resourcemanager:/opt/hadoop-3.2.1/etc/hadoop/hdfs-site.xml
+
+echo "Конфиги скопированы в основные узлы"
+```
+
+## 3. Тестируем применение конфигов
+
+### Проверка настроек
+```bash
+echo "=== Проверка настроек ==="
+docker exec namenode /opt/hadoop-3.2.1/bin/hdfs getconf -confKey hadoop.tmp.dir
+docker exec namenode /opt/hadoop-3.2.1/bin/hdfs getconf -confKey custom.setting
+docker exec namenode /opt/hadoop-3.2.1/bin/hdfs getconf -confKey dfs.replication
+docker exec namenode /opt/hadoop-3.2.1/bin/hdfs getconf -confKey dfs.blocksize
+```
+
+### Проверка работы кластера
+```bash
+echo "=== Проверка работы кластера ==="
+
+# Процессы
+docker exec namenode jps
+docker exec datanode1 jps
+
+# Статус HDFS
+docker exec namenode /opt/hadoop-3.2.1/bin/hdfs dfsadmin -report | grep "Live datanodes"
+
+# Тестовая операция
+docker exec namenode /opt/hadoop-3.2.1/bin/hdfs dfs -mkdir -p /custom-test
+docker exec namenode /opt/hadoop-3.2.1/bin/hdfs dfs -put /opt/hadoop-3.2.1/README.txt /custom-test/
+docker exec namenode /opt/hadoop-3.2.1/bin/hdfs dfs -ls /custom-test/
+
+# Проверка информации о файле
+docker exec namenode /opt/hadoop-3.2.1/bin/hdfs fsck /custom-test/README.txt -blocks -locations
+```
+
+## 4. Итоговая проверка
+```bash
+echo "=== Итоговая проверка ==="
+echo "Настройки применены:"
+docker exec namenode /opt/hadoop-3.2.1/bin/hdfs getconf -confKey custom.setting
+echo "Кластер работает:"
+docker exec namenode /opt/hadoop-3.2.1/bin/hdfs dfs -test -e /custom-test/README.txt && echo "Файл в HDFS: OK" || echo "Ошибка"
+echo "Процессы:"
+docker exec namenode jps | grep -E "(NameNode|DataNode)"
+```
+
+**Готово! Конфигурационные файлы добавлены из папки custom-configs и проверены.**
 
 [🔼 Наверх](#план-вебинара)
 
@@ -328,24 +432,67 @@ curl -s "http://localhost:9870/jmx?qry=Hadoop:service=NameNode,name=NameNodeInfo
 | **Namespace Quota** | Количество объектов | Файлы и директории | `hdfs dfsadmin -setQuota` |
 | **Storage Type Quota** | Байты по типам | Пространство по типам хранения | `hdfs dfs -setSpaceQuota` |
 
-### **Практическая часть**
+**Практическое задание: Квоты в HDFS**
 
+## Цель: Освоить установку и управление квотами дискового пространства
+
+### 1. Подготовка
 ```bash
-# Работа с Space Quotas
-hdfs dfsadmin -setSpaceQuota 50M /test_quota
-hdfs dfs -count -q /test_quota
-
-# Работа с Namespace Quotas
-hdfs dfsadmin -setQuota 5 /test_namespace
-hdfs dfs -count -q /test_namespace
-
-# Мониторинг квот
-hdfs dfs -count -q /user/*
-
-# Управление квотами
-hdfs dfsadmin -clrSpaceQuota /test_quota
-hdfs dfsadmin -clrQuota /test_namespace
+docker exec -it namenode bash
+hdfs dfs -mkdir /quota_demo
+hdfs dfs -mkdir /quota_demo/small
+hdfs dfs -mkdir /quota_demo/large
 ```
+
+### 2. Установка квот
+```bash
+# Маленькая квота (20MB)
+hdfs dfsadmin -setSpaceQuota 20M /quota_demo/small
+
+# Большая квота (200MB)  
+hdfs dfsadmin -setSpaceQuota 200M /quota_demo/large
+
+# Проверка
+hdfs dfs -count -q /quota_demo/small
+hdfs dfs -count -q /quota_demo/large
+```
+
+### 3. Тестирование ограничений
+```bash
+# Создаем тестовые файлы
+dd if=/dev/zero of=/tmp/test1.bin bs=1M count=5
+dd if=/dev/zero of=/tmp/test2.bin bs=1M count=15
+
+# Тест small квоты (должна быть ошибка)
+hdfs dfs -put /tmp/test1.bin /quota_demo/small/
+
+# Тест large квоты (должен работать)
+hdfs dfs -put /tmp/test1.bin /quota_demo/large/
+hdfs dfs -put /tmp/test2.bin /quota_demo/large/
+```
+
+### 4. Решение проблемы блоков
+```bash
+# Увеличиваем квоту
+hdfs dfsadmin -setSpaceQuota 150M /quota_demo/small
+
+# Теперь файл должен поместиться
+hdfs dfs -put /tmp/test1.bin /quota_demo/small/
+
+# Проверяем результат
+hdfs dfs -count -q /quota_demo/small
+hdfs dfs -du -h /quota_demo
+```
+
+### 5. Управление квотами
+```bash
+# Снимаем квоту
+hdfs dfsadmin -clrSpaceQuota /quota_demo/small
+
+# Проверяем
+hdfs dfs -count -q /quota_demo/small
+```
+
 
 [🔼 Наверх](#план-вебинара)
 
@@ -383,20 +530,86 @@ hdfs dfsadmin -clrQuota /test_namespace
 | **exclude** | - | Исключаемые узлы | Узлы в maintenance |
 | **include** | - | Включаемые узлы | Только определенные узлы |
 
-### **Практическая часть**
+**Практическое задание: Балансировка и мониторинг HDFS**
 
+## Цель: Освоить балансировку кластера и мониторинг производительности
+
+### 1. Подготовка тестовых данных
 ```bash
-# Анализ текущего распределения данных
+# Создаем тестовые данные разного размера
+dd if=/dev/urandom of=/tmp/data_100mb.bin bs=1M count=100
+dd if=/dev/urandom of=/tmp/data_50mb.bin bs=1M count=50
+dd if=/dev/urandom of=/tmp/data_200mb.bin bs=1M count=200
+
+# Создаем директории для теста
+hdfs dfs -mkdir /balance_test
+hdfs dfs -mkdir /balance_test/node1
+hdfs dfs -mkdir /balance_test/node2
+```
+
+### 2. Создаем искусственный дисбаланс
+```bash
+# Загружаем данные в разные директории (имитация неравномерной загрузки)
+hdfs dfs -put /tmp/data_100mb.bin /balance_test/node1/
+hdfs dfs -put /tmp/data_200mb.bin /balance_test/node1/
+hdfs dfs -put /tmp/data_50mb.bin /balance_test/node2/
+
+# Проверяем распределение
+hdfs dfs -du -h /balance_test
+```
+
+### 3. Мониторинг перед балансировкой
+```bash
+# Проверяем текущее распределение данных
+echo "=== Распределение по узлам ==="
+hdfs dfsadmin -report | grep -A 5 "Datanode" | grep -E "Name|HostName|DFS Used"
+
+# Детальная статистика
+hdfs fsck / -blocks | grep "Total blocks"
+```
+
+### 4. Запуск балансировки
+```bash
+# Балансировка с ограничением пропускной способности
+hdfs balancer -D dfs.datanode.balance.bandwidthPerSec=10485760 -threshold 5
+
+# Мониторинг процесса в реальном времени (в другом терминале)
+# hdfs dfsadmin -report | grep "DFS Used%"
+```
+
+### 5. Проверка результатов
+```bash
+# Сравниваем распределение до и после
+echo "=== После балансировки ==="
+hdfs dfsadmin -report | grep -A 5 "Datanode" | grep -E "Name|DFS Used"
+
+# Проверяем целостность данных
+hdfs fsck /balance_test -blocks -locations
+
+# Общая статистика
 hdfs dfsadmin -report | grep -E "Configured Capacity|Present Capacity|DFS Used%"
+```
 
-# Проверка необходимости балансировки
+### 6. Тест под нагрузкой
+```bash
+# Создаем дополнительную нагрузку
+for i in {1..5}; do
+    hdfs dfs -put /tmp/data_50mb.bin /balance_test/stress_$i.bin &
+done
+wait
+
+# Проверяем распределение под нагрузкой
+hdfs dfsadmin -report | grep "DFS Used%"
+```
+
+### 7. Очистка тестовых данных
+```bash
+# Удаляем тестовые данные
+hdfs dfs -rm -r /balance_test
+rm -f /tmp/data_*.bin
+
+# Финальная проверка баланса
 hdfs balancer -threshold 5
-
-# Запуск балансировки
-hdfs balancer -D dfs.datanode.balance.bandwidthPerSec=52428800 -threshold 10
-
-# Мониторинг прогресса
-hdfs dfsadmin -report | grep -A 3 "Datanode" | grep -E "Name|DFS Used%"
 ```
 
 [🔼 Наверх](#план-вебинара)
@@ -479,6 +692,7 @@ hdfs fsck / -files -blocks     # Диагностика целостности
 hdfs dfsadmin -setSpaceQuota   # Установка квот
 hdfs balancer -threshold 10    # Балансировка кластера
 ```
+
 
 
 
