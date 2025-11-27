@@ -297,15 +297,19 @@ if __name__ == '__main__':
 `docker cp secondary_sort.py namenode:/scripts/`
 
 Запускаем ВНУТРИ контейнера
+
+```
 docker-compose exec namenode bash
 export PATH="/tmp/python/bin:$PATH"
 cd /scripts
+```
 
 Запускаем ВТОРИЧНУЮ СОРТИРОВКУ
+```
 python3 secondary_sort.py -r hadoop \
   hdfs://namenode:9000/user/root/input/retail_sales_dataset.csv \
   --output-dir hdfs://namenode:9000/user/root/output/secondary_sort
-  
+``` 
 <details>
   <summary>Визуализация</summary>
     
@@ -454,7 +458,7 @@ if __name__ == '__main__':
     create_combined_analysis()
 ```
 ```bash
-# 1. Удаляем старые результаты
+# 1. Удаляем старые результаты, если они есть
 docker-compose exec namenode hdfs dfs -rm -r /user/root/output/secondary_sort
 
 # 2. Копируем скрипты в контейнер
@@ -486,7 +490,7 @@ feh combined_analysis.png
 ### **2. `composite_keys.py` - СОСТАВНЫЕ КЛЮЧИ**
 ```python
 """
-📚 ТЕОРЕТИЧЕСКАЯ ОСНОВА: Составные ключи для многомерного анализа
+ТЕОРЕТИЧЕСКАЯ ОСНОВА: Составные ключи для многомерного анализа
 
 ПРОБЛЕМА: Традиционный подход требует нескольких проходов:
 1. Анализ по полу → 1 Job
@@ -498,12 +502,252 @@ feh combined_analysis.png
 "CROSS_AGE_CATEGORY_25-34_Books" → 15000
 "TRIPLE_Female_25-34_Electronics" → 12000
 
-🔧 ТЕХНИКА:
+ТЕХНИКА:
 - Ключи как измерения: DEMO_GENDER_, PRODUCT_, CROSS_
 - Кросс-секционный анализ в одном mapper
 - Избежание повторных проходов по данным
 """
 ```
+**Создаем `composite_keys.py`:**
+```python
+#!/usr/bin/env python3
+from mrjob.job import MRJob
+from datetime import datetime
+
+class CompositeKeysAnalysis(MRJob):
+
+    def mapper(self, _, line):
+        if 'Transaction ID' in line:
+            return
+            
+        parts = line.split(',')
+        if len(parts) >= 9:
+            try:
+                date_str = parts[1].strip()
+                gender = parts[3].strip()
+                age = int(parts[4])
+                category = parts[5].strip()
+                total_amount = float(parts[8])
+                
+                date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+                year_month = date_obj.strftime('%Y-%m')
+                age_group = self.get_age_group(age)
+                season = self.get_season(date_obj.month)
+                
+                # СОСТАВНЫЕ КЛЮЧИ - многомерный анализ в одном проходе
+                
+                # Временные срезы
+                yield f"TIME_{year_month}", total_amount
+                yield f"TIME_SEASON_{season}", total_amount
+                
+                # Демографические срезы  
+                yield f"DEMO_GENDER_{gender}", total_amount
+                yield f"DEMO_AGE_{age_group}", total_amount
+                
+                # Продуктовые срезы
+                yield f"PRODUCT_{category}", total_amount
+                
+                # КРОСС-СЕКЦИОННЫЕ АНАЛИЗЫ (составные ключи)
+                yield f"CROSS_GENDER_CATEGORY_{gender}_{category}", total_amount
+                yield f"CROSS_AGE_CATEGORY_{age_group}_{category}", total_amount
+                yield f"CROSS_SEASON_CATEGORY_{season}_{category}", total_amount
+                yield f"CROSS_GENDER_AGE_{gender}_{age_group}", total_amount
+                
+                # Тройные пересечения
+                yield f"TRIPLE_{gender}_{age_group}_{category}", total_amount
+                
+            except (ValueError, IndexError) as e:
+                self.increment_counter('errors', 'parsing_error', 1)
+
+    def get_age_group(self, age):
+        if age <= 24: return "18-24"
+        elif age <= 34: return "25-34" 
+        elif age <= 44: return "35-44"
+        elif age <= 54: return "45-54"
+        else: return "55+"
+
+    def get_season(self, month):
+        if month in [12, 1, 2]: return "WINTER"
+        elif month in [3, 4, 5]: return "SPRING"
+        elif month in [6, 7, 8]: return "SUMMER"
+        else: return "AUTUMN"
+
+    def reducer(self, key, values):
+        total = sum(values)
+        count = sum(1 for _ in values)
+        
+        if key.startswith("TRIPLE"):
+            yield key, f"${total:,.2f} ({count} покупок)"
+        else:
+            yield key, f"${total:,.2f}"
+
+if __name__ == '__main__':
+    CompositeKeysAnalysis.run()
+```
+<details>
+  <summary>Визуализация</summary>
+    
+### **`visualize_composite_keys.py`
+```python
+#!/usr/bin/env python3
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import subprocess
+import numpy as np
+
+def main():
+    print("ВИЗУАЛИЗАЦИЯ: Составные ключи")
+    
+    # Получаем ВСЕ данные из ВСЕХ партов
+    cmd = "hdfs dfs -cat /user/root/output/composite_keys/part-*"
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    
+    # Парсим данные
+    female_total = 0
+    male_total = 0
+    age_totals = {}
+    category_totals = {}
+    season_totals = {}
+    monthly_totals = {}
+    
+    for line in result.stdout.strip().split('\n'):
+        if '\t' in line and 'INFO' not in line:
+            key, value = line.split('\t')
+            key = key.strip('"')
+            value = value.strip('"')
+            
+            try:
+                # Парсим числовое значение
+                if value.startswith('$'):
+                    amount = float(value.replace('$', '').replace(',', ''))
+                else:
+                    # Для TRIPLE ключей берем только число до пробела
+                    amount = float(value.split(' ')[0].replace('$', '').replace(',', ''))
+                
+                # Анализируем по типам ключей
+                if key.startswith('DEMO_GENDER_'):
+                    if 'Female' in key:
+                        female_total += amount
+                    elif 'Male' in key:
+                        male_total += amount
+                
+                elif key.startswith('DEMO_AGE_'):
+                    age_group = key.replace('DEMO_AGE_', '')
+                    age_totals[age_group] = amount
+                
+                elif key.startswith('PRODUCT_'):
+                    category = key.replace('PRODUCT_', '')
+                    category_totals[category] = amount
+                
+                elif key.startswith('TIME_SEASON_'):
+                    season = key.replace('TIME_SEASON_', '')
+                    season_totals[season] = amount
+                
+                elif key.startswith('TIME_20'):
+                    month = key.replace('TIME_', '')
+                    if month not in ['SEASON_AUTUMN', 'SEASON_SPRING', 'SEASON_SUMMER', 'SEASON_WINTER']:
+                        monthly_totals[month] = amount
+                        
+            except:
+                continue
+    
+    # Создаем комплексный график
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 10))
+    fig.suptitle('АНАЛИЗ СОСТАВНЫХ КЛЮЧЕЙ', fontsize=16, fontweight='bold')
+    
+    # 1. Пол
+    if female_total > 0 and male_total > 0:
+        ax1.bar(['Female', 'Male'], [female_total, male_total], 
+                color=['pink', 'lightblue'], alpha=0.7)
+        ax1.set_title('Выручка по полу')
+        ax1.set_ylabel('Выручка ($)')
+        for i, v in enumerate([female_total, male_total]):
+            ax1.text(i, v + 1000, f'${v:,.0f}', ha='center', va='bottom')
+    
+    # 2. Возрастные группы
+    if age_totals:
+        age_groups = ['18-24', '25-34', '35-44', '45-54', '55+']
+        values = [age_totals.get(age, 0) for age in age_groups]
+        ax2.bar(age_groups, values, color='lightgreen', alpha=0.7)
+        ax2.set_title('Выручка по возрастам')
+        ax2.set_ylabel('Выручка ($)')
+        ax2.tick_params(axis='x', rotation=45)
+        for i, v in enumerate(values):
+            ax2.text(i, v + 1000, f'${v:,.0f}', ha='center', va='bottom', fontsize=8)
+    
+    # 3. Категории товаров
+    if category_totals:
+        categories = list(category_totals.keys())
+        values = list(category_totals.values())
+        ax3.bar(categories, values, color='orange', alpha=0.7)
+        ax3.set_title('Выручка по категориям')
+        ax3.set_ylabel('Выручка ($)')
+        for i, v in enumerate(values):
+            ax3.text(i, v + 1000, f'${v:,.0f}', ha='center', va='bottom')
+    
+    # 4. Сезоны
+    if season_totals:
+        seasons = list(season_totals.keys())
+        values = list(season_totals.values())
+        ax4.bar(seasons, values, color='purple', alpha=0.7)
+        ax4.set_title('Выручка по сезонам')
+        ax4.set_ylabel('Выручка ($)')
+        for i, v in enumerate(values):
+            ax4.text(i, v + 1000, f'${v:,.0f}', ha='center', va='bottom')
+    
+    plt.tight_layout()
+    plt.savefig('/scripts/composite_keys_analysis.png', dpi=100, bbox_inches='tight')
+    plt.close()
+    
+    print("График сохранен: composite_keys_analysis.png")
+    
+    # Текстовая статистика
+    print(f"\nСТАТИСТИКА:")
+    print(f"Female: ${female_total:,.2f}")
+    print(f"Male: ${male_total:,.2f}")
+    
+    print(f"\nВОЗРАСТНЫЕ ГРУППЫ:")
+    for age in ['18-24', '25-34', '35-44', '45-54', '55+']:
+        if age in age_totals:
+            print(f"  {age}: ${age_totals[age]:,.2f}")
+    
+    print(f"\nКАТЕГОРИИ:")
+    for category, amount in category_totals.items():
+        print(f"  {category}: ${amount:,.2f}")
+    
+    print(f"\nСЕЗОНЫ:")
+    for season, amount in season_totals.items():
+        print(f"  {season}: ${amount:,.2f}")
+
+if __name__ == '__main__':
+    main()
+```
+# 1. Копируем скрипты в контейнер
+docker cp composite_keys.py namenode:/scripts/
+docker cp visualize_composite_keys.py namenode:/scripts/
+
+# 2. Запускаем анализ
+docker-compose exec namenode bash
+cd /scripts
+
+python3 composite_keys.py -r hadoop \
+  hdfs://namenode:9000/user/root/input/retail_sales_dataset.csv \
+  --output-dir hdfs://namenode:9000/user/root/output/composite_keys
+
+# 4. Запускаем визуализацию
+python3 visualize_composite_keys.py
+
+# 5. Проверяем результаты
+hdfs dfs -cat /user/root/output/composite_keys/part-00000 | head -10
+
+# 6. Копируем график на хост
+docker cp namenode:/scripts/composite_keys_analysis.png ./
+
+# 7. Смотрим график
+feh composite_keys_analysis.png
+
+</details>
 
 ### **3. `multiple_outputs.py` - MULTIPLE OUTPUTS**
 ```python
