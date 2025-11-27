@@ -595,21 +595,20 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import subprocess
 import numpy as np
+import pandas as pd
 
 def main():
-    print("ВИЗУАЛИЗАЦИЯ: Составные ключи")
+    print("МНОГОМЕРНЫЙ АНАЛИЗ: Составные ключи")
     
-    # Получаем ВСЕ данные из ВСЕХ партов
+    # Получаем ВСЕ данные
     cmd = "hdfs dfs -cat /user/root/output/composite_keys/part-*"
     result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
     
-    # Парсим данные
-    female_total = 0
-    male_total = 0
-    age_totals = {}
-    category_totals = {}
-    season_totals = {}
-    monthly_totals = {}
+    # Собираем многомерные данные с ПРАВИЛЬНЫМ парсингом
+    gender_age_data = []
+    age_category_data = []
+    gender_category_data = []
+    season_category_data = []
     
     for line in result.stdout.strip().split('\n'):
         if '\t' in line and 'INFO' not in line:
@@ -618,83 +617,172 @@ def main():
             value = value.strip('"')
             
             try:
-                # Парсим числовое значение
+                # Парсим только числовые значения с $
                 if value.startswith('$'):
                     amount = float(value.replace('$', '').replace(',', ''))
-                else:
-                    # Для TRIPLE ключей берем только число до пробела
-                    amount = float(value.split(' ')[0].replace('$', '').replace(',', ''))
-                
-                # Анализируем по типам ключей
-                if key.startswith('DEMO_GENDER_'):
-                    if 'Female' in key:
-                        female_total += amount
-                    elif 'Male' in key:
-                        male_total += amount
-                
-                elif key.startswith('DEMO_AGE_'):
-                    age_group = key.replace('DEMO_AGE_', '')
-                    age_totals[age_group] = amount
-                
-                elif key.startswith('PRODUCT_'):
-                    category = key.replace('PRODUCT_', '')
-                    category_totals[category] = amount
-                
-                elif key.startswith('TIME_SEASON_'):
-                    season = key.replace('TIME_SEASON_', '')
-                    season_totals[season] = amount
-                
-                elif key.startswith('TIME_20'):
-                    month = key.replace('TIME_', '')
-                    if month not in ['SEASON_AUTUMN', 'SEASON_SPRING', 'SEASON_SUMMER', 'SEASON_WINTER']:
-                        monthly_totals[month] = amount
+                    
+                    # CROSS_GENDER_AGE - пол × возраст
+                    if key.startswith('CROSS_GENDER_AGE_'):
+                        parts = key.split('_')
+                        if len(parts) >= 5:
+                            gender = parts[3]  # Female
+                            age_group = parts[4]  # 18-24
+                            gender_age_data.append({
+                                'gender': gender,
+                                'age_group': age_group,
+                                'amount': amount
+                            })
+                    
+                    # CROSS_AGE_CATEGORY - возраст × категория
+                    elif key.startswith('CROSS_AGE_CATEGORY_'):
+                        parts = key.split('_')
+                        if len(parts) >= 5:
+                            age_group = parts[3]  # 18-24
+                            category = parts[4]   # Beauty
+                            age_category_data.append({
+                                'age_group': age_group,
+                                'category': category,
+                                'amount': amount
+                            })
+                    
+                    # CROSS_GENDER_CATEGORY - пол × категория
+                    elif key.startswith('CROSS_GENDER_CATEGORY_'):
+                        parts = key.split('_')
+                        if len(parts) >= 5:
+                            gender = parts[3]  # Female
+                            category = parts[4]  # Beauty
+                            gender_category_data.append({
+                                'gender': gender,
+                                'category': category,
+                                'amount': amount
+                            })
+                    
+                    # CROSS_SEASON_CATEGORY - сезон × категория
+                    elif key.startswith('CROSS_SEASON_CATEGORY_'):
+                        parts = key.split('_')
+                        if len(parts) >= 5:
+                            season = parts[3]  # AUTUMN
+                            category = parts[4]  # Beauty
+                            season_category_data.append({
+                                'season': season,
+                                'category': category,
+                                'amount': amount
+                            })
                         
             except:
                 continue
     
-    # Создаем комплексный график
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 10))
-    fig.suptitle('АНАЛИЗ СОСТАВНЫХ КЛЮЧЕЙ', fontsize=16, fontweight='bold')
+    # Создаем комплексные многомерные графики
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(16, 12))
+    fig.suptitle('МНОГОМЕРНЫЙ АНАЛИЗ: Пересечения демографии и поведения', 
+                fontsize=16, fontweight='bold')
     
-    # 1. Пол
-    if female_total > 0 and male_total > 0:
-        ax1.bar(['Female', 'Male'], [female_total, male_total], 
-                color=['pink', 'lightblue'], alpha=0.7)
-        ax1.set_title('Выручка по полу')
-        ax1.set_ylabel('Выручка ($)')
-        for i, v in enumerate([female_total, male_total]):
-            ax1.text(i, v + 1000, f'${v:,.0f}', ha='center', va='bottom')
+    # 1. Heatmap: Пол × Возраст
+    if gender_age_data:
+        df = pd.DataFrame(gender_age_data)
+        pivot = df.pivot_table(index='gender', columns='age_group', values='amount', aggfunc='sum').fillna(0)
+        
+        # Сортируем возрастные группы
+        age_order = ['18-24', '25-34', '35-44', '45-54', '55+']
+        pivot = pivot[age_order]
+        
+        im1 = ax1.imshow(pivot.values, cmap='YlOrRd', aspect='auto')
+        ax1.set_xticks(range(len(age_order)))
+        ax1.set_yticks(range(len(pivot.index)))
+        ax1.set_xticklabels(age_order)
+        ax1.set_yticklabels(pivot.index)
+        ax1.set_title('ПОЛ × ВОЗРАСТ\nВыручка по демографическим группам')
+        ax1.set_xlabel('Возрастные группы')
+        ax1.set_ylabel('Пол')
+        
+        for i in range(len(pivot.index)):
+            for j in range(len(age_order)):
+                value = pivot.iloc[i, j]
+                if value > 0:
+                    ax1.text(j, i, f'${value/1000:.0f}K', 
+                            ha="center", va="center", color="black", fontsize=10,
+                            fontweight='bold')
+        
+        plt.colorbar(im1, ax=ax1, label='Выручка ($)')
     
-    # 2. Возрастные группы
-    if age_totals:
-        age_groups = ['18-24', '25-34', '35-44', '45-54', '55+']
-        values = [age_totals.get(age, 0) for age in age_groups]
-        ax2.bar(age_groups, values, color='lightgreen', alpha=0.7)
-        ax2.set_title('Выручка по возрастам')
-        ax2.set_ylabel('Выручка ($)')
-        ax2.tick_params(axis='x', rotation=45)
-        for i, v in enumerate(values):
-            ax2.text(i, v + 1000, f'${v:,.0f}', ha='center', va='bottom', fontsize=8)
+    # 2. Heatmap: Возраст × Категория
+    if age_category_data:
+        df = pd.DataFrame(age_category_data)
+        pivot = df.pivot_table(index='age_group', columns='category', values='amount', aggfunc='sum').fillna(0)
+        
+        # Сортируем возрастные группы
+        age_order = ['18-24', '25-34', '35-44', '45-54', '55+']
+        pivot = pivot.reindex(age_order)
+        
+        im2 = ax2.imshow(pivot.values, cmap='Blues', aspect='auto')
+        ax2.set_xticks(range(len(pivot.columns)))
+        ax2.set_yticks(range(len(age_order)))
+        ax2.set_xticklabels(pivot.columns, rotation=45, ha='right')
+        ax2.set_yticklabels(age_order)
+        ax2.set_title('ВОЗРАСТ × КАТЕГОРИЯ\nПредпочтения по возрастам')
+        ax2.set_xlabel('Категории товаров')
+        ax2.set_ylabel('Возрастные группы')
+        
+        for i in range(len(age_order)):
+            for j in range(len(pivot.columns)):
+                value = pivot.iloc[i, j]
+                if value > 0:
+                    ax2.text(j, i, f'${value/1000:.0f}K', 
+                            ha="center", va="center", color="black", fontsize=9)
+        
+        plt.colorbar(im2, ax=ax2, label='Выручка ($)')
     
-    # 3. Категории товаров
-    if category_totals:
-        categories = list(category_totals.keys())
-        values = list(category_totals.values())
-        ax3.bar(categories, values, color='orange', alpha=0.7)
-        ax3.set_title('Выручка по категориям')
+    # 3. Grouped bar: Пол × Категория
+    if gender_category_data:
+        df = pd.DataFrame(gender_category_data)
+        pivot = df.pivot_table(index='gender', columns='category', values='amount', aggfunc='sum').fillna(0)
+        
+        categories = pivot.columns
+        x = np.arange(len(pivot.index))
+        width = 0.25
+        
+        for i, category in enumerate(categories):
+            offset = width * i
+            values = pivot[category].values
+            ax3.bar(x + offset, values, width, label=category,
+                   color=plt.cm.Set3(i / len(categories)))
+            
+            for j, value in enumerate(values):
+                ax3.text(j + offset, value + 1000, f'${value/1000:.0f}K',
+                        ha='center', va='bottom', fontsize=8, fontweight='bold')
+        
+        ax3.set_xticks(x + width)
+        ax3.set_xticklabels(pivot.index)
+        ax3.set_title('ПОЛ × КАТЕГОРИЯ\nПредпочтения по полу')
         ax3.set_ylabel('Выручка ($)')
-        for i, v in enumerate(values):
-            ax3.text(i, v + 1000, f'${v:,.0f}', ha='center', va='bottom')
+        ax3.legend(title='Категории')
     
-    # 4. Сезоны
-    if season_totals:
-        seasons = list(season_totals.keys())
-        values = list(season_totals.values())
-        ax4.bar(seasons, values, color='purple', alpha=0.7)
-        ax4.set_title('Выручка по сезонам')
+    # 4. Stacked bar: Сезон × Категория
+    if season_category_data:
+        df = pd.DataFrame(season_category_data)
+        pivot = df.pivot_table(index='season', columns='category', values='amount', aggfunc='sum').fillna(0)
+        
+        categories = pivot.columns
+        x = range(len(pivot.index))
+        bottom = np.zeros(len(pivot.index))
+        
+        for i, category in enumerate(categories):
+            values = pivot[category].values
+            ax4.bar(x, values, bottom=bottom, label=category, 
+                   color=plt.cm.Pastel1(i / len(categories)))
+            bottom += values
+        
+        ax4.set_xticks(x)
+        ax4.set_xticklabels(pivot.index)
+        ax4.set_title('СЕЗОН × КАТЕГОРИЯ\nСезонные предпочтения')
         ax4.set_ylabel('Выручка ($)')
-        for i, v in enumerate(values):
-            ax4.text(i, v + 1000, f'${v:,.0f}', ha='center', va='bottom')
+        ax4.legend(title='Категории')
+        
+        # Добавляем общие суммы
+        for i, season in enumerate(pivot.index):
+            total = pivot.loc[season].sum()
+            ax4.text(i, total + 2000, f'${total/1000:.0f}K', 
+                    ha='center', va='bottom', fontweight='bold')
     
     plt.tight_layout()
     plt.savefig('/scripts/composite_keys_analysis.png', dpi=100, bbox_inches='tight')
@@ -702,23 +790,18 @@ def main():
     
     print("График сохранен: composite_keys_analysis.png")
     
-    # Текстовая статистика
-    print(f"\nСТАТИСТИКА:")
-    print(f"Female: ${female_total:,.2f}")
-    print(f"Male: ${male_total:,.2f}")
+    # Ключевые инсайты
+    print(f"\nКЛЮЧЕВЫЕ ИНСАЙТЫ:")
     
-    print(f"\nВОЗРАСТНЫЕ ГРУППЫ:")
-    for age in ['18-24', '25-34', '35-44', '45-54', '55+']:
-        if age in age_totals:
-            print(f"  {age}: ${age_totals[age]:,.2f}")
+    if gender_age_data:
+        df = pd.DataFrame(gender_age_data)
+        max_combo = df.loc[df['amount'].idxmax()]
+        print(f"• Самые активные: {max_combo['gender']} {max_combo['age_group']} (${max_combo['amount']:,.0f})")
     
-    print(f"\nКАТЕГОРИИ:")
-    for category, amount in category_totals.items():
-        print(f"  {category}: ${amount:,.2f}")
-    
-    print(f"\nСЕЗОНЫ:")
-    for season, amount in season_totals.items():
-        print(f"  {season}: ${amount:,.2f}")
+    if age_category_data:
+        df = pd.DataFrame(age_category_data)
+        max_combo = df.loc[df['amount'].idxmax()]
+        print(f"• Самый прибыльный сегмент: {max_combo['age_group']} покупают {max_combo['category']} (${max_combo['amount']:,.0f})")
 
 if __name__ == '__main__':
     main()
