@@ -586,115 +586,6 @@ if __name__ == '__main__':
 ```
 <details>
   <summary>Визуализация</summary>
-    
-**3. `visualize_multiple_outputs.py` - MULTIPLE OUTPUTS**
-```python
-#!/usr/bin/env python3
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import pandas as pd
-import subprocess
-
-def get_multiple_outputs_results():
-    cmd = "hdfs dfs -cat /user/root/output/multiple_outputs/part-*"
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-    
-    data = {}
-    for line in result.stdout.strip().split('\n'):
-        if '\t' in line:
-            key, value = line.split('\t')
-            data[key] = value
-    return data
-
-def visualize_multiple_outputs():
-    print("ВИЗУАЛИЗАЦИЯ: Multiple Outputs")
-    print("Теоретическая основа: Комплексная аналитика из одного Job")
-    
-    results = get_multiple_outputs_results()
-    
-    # Группируем по типам выходных данных
-    trend_data = {k: v for k, v in results.items() if k.startswith('TREND_')}
-    demo_data = {k: v for k, v in results.items() if k.startswith('DEMO_')}
-    product_data = {k: v for k, v in results.items() if k.startswith('PRODUCT_')}
-    metric_data = {k: v for k, v in results.items() if k.startswith('METRIC_')}
-    segment_data = {k: v for k, v in results.items() if k.startswith('SEGMENT_')}
-    
-    fig, axes = plt.subplots(2, 3, figsize=(18, 12))
-    fig.suptitle('MULTIPLE OUTPUTS: Комплексная аналитика из одного Job', 
-                fontsize=16, fontweight='bold')
-    
-    # 1. Тренды
-    if trend_data:
-        trend_df = pd.DataFrame(list(trend_data.items()), columns=['trend', 'value'])
-        axes[0,0].bar(range(len(trend_df)), [float(str(v).replace('$', '').replace(',', '')) 
-                                           for v in trend_df['value']], color='skyblue')
-        axes[0,0].set_title('Временные тренды')
-        axes[0,0].set_ylabel('Значение')
-    
-    # 2. Демография
-    if demo_data:
-        demo_df = pd.DataFrame(list(demo_data.items()), columns=['demo', 'value'])
-        axes[0,1].pie([float(str(v).replace('$', '').replace(',', '')) for v in demo_df['value']], 
-                     labels=demo_df['demo'].str.replace('DEMO_', ''), autopct='%1.1f%%')
-        axes[0,1].set_title('Демографическое распределение')
-    
-    # 3. Продукты
-    if product_data:
-        product_df = pd.DataFrame(list(product_data.items()), columns=['product', 'value'])
-        axes[0,2].barh(range(len(product_df)), 
-                      [float(str(v).replace('$', '').replace(',', '')) for v in product_df['value']],
-                      color='lightgreen')
-        axes[0,2].set_title('Продуктовый анализ')
-        axes[0,2].set_xlabel('Выручка ($)')
-    
-    # 4. Метрики
-    if metric_data:
-        metric_df = pd.DataFrame(list(metric_data.items()), columns=['metric', 'value'])
-        axes[1,0].bar(range(len(metric_df)), [float(str(v).replace('$', '')) for v in metric_df['value']],
-                     color='gold')
-        axes[1,0].set_title('Бизнес-метрики')
-        axes[1,0].set_ylabel('Значение')
-    
-    # 5. Сегменты
-    if segment_data:
-        segment_counts = {}
-        for key in segment_data.keys():
-            segment_type = key.split('_')[1]
-            segment_counts[segment_type] = segment_counts.get(segment_type, 0) + 1
-        
-        axes[1,1].bar(segment_counts.keys(), segment_counts.values(), color='lightcoral')
-        axes[1,1].set_title('Сегментация клиентов')
-        axes[1,1].set_ylabel('Количество сегментов')
-    
-    # 6. Сводная информация
-    axes[1,2].text(0.1, 0.9, 'СВОДКА MULTIPLE OUTPUTS:', fontsize=12, fontweight='bold')
-    axes[1,2].text(0.1, 0.7, f'Тренды: {len(trend_data)}', fontsize=10)
-    axes[1,2].text(0.1, 0.6, f'Демография: {len(demo_data)}', fontsize=10)
-    axes[1,2].text(0.1, 0.5, f'Продукты: {len(product_data)}', fontsize=10)
-    axes[1,2].text(0.1, 0.4, f'Метрики: {len(metric_data)}', fontsize=10)
-    axes[1,2].text(0.1, 0.3, f'Сегменты: {len(segment_data)}', fontsize=10)
-    axes[1,2].axis('off')
-    axes[1,2].set_title('Статистика выходных данных')
-    
-    plt.tight_layout()
-    plt.savefig('/scripts/multiple_outputs_analysis.png', dpi=100, bbox_inches='tight')
-    plt.close()
-    
-    print("График сохранен: multiple_outputs_analysis.png")
-    
-    print("\n" + "="*80)
-    print("АНАЛИЗ MULTIPLE OUTPUTS")
-    print("="*80)
-    print(f"Всего сгенерировано {len(results)} различных метрик")
-    print(f"Типы анализа: Тренды ({len(trend_data)}), Демография ({len(demo_data)}), "
-          f"Продукты ({len(product_data)}), Метрики ({len(metric_data)}), "
-          f"Сегменты ({len(segment_data)})")
-
-if __name__ == '__main__':
-    visualize_multiple_outputs()
-    
-</details>
 
 ### **`visualize_composite_keys.py`
 ```python
@@ -1045,13 +936,137 @@ class MultipleOutputsAnalysis(MRJob):
 
 if __name__ == '__main__':
     MultipleOutputsAnalysis.run()
-``` 
+```
+<details>
+  <summary>Визуализация</summary>
+    
+** `visualize_multiple_outputs.py` - MULTIPLE OUTPUTS**
+```python
+#!/usr/bin/env python3
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import pandas as pd
+import subprocess
+
+def get_multiple_outputs_results():
+    cmd = "hdfs dfs -cat /user/root/output/multiple_outputs/part-*"
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    
+    data = {}
+    for line in result.stdout.strip().split('\n'):
+        if '\t' in line:
+            key, value = line.split('\t')
+            data[key] = value
+    return data
+
+def visualize_multiple_outputs():
+    print("ВИЗУАЛИЗАЦИЯ: Multiple Outputs")
+    print("Теоретическая основа: Комплексная аналитика из одного Job")
+    
+    results = get_multiple_outputs_results()
+    
+    # Группируем по типам выходных данных
+    trend_data = {k: v for k, v in results.items() if k.startswith('TREND_')}
+    demo_data = {k: v for k, v in results.items() if k.startswith('DEMO_')}
+    product_data = {k: v for k, v in results.items() if k.startswith('PRODUCT_')}
+    metric_data = {k: v for k, v in results.items() if k.startswith('METRIC_')}
+    segment_data = {k: v for k, v in results.items() if k.startswith('SEGMENT_')}
+    
+    fig, axes = plt.subplots(2, 3, figsize=(18, 12))
+    fig.suptitle('MULTIPLE OUTPUTS: Комплексная аналитика из одного Job', 
+                fontsize=16, fontweight='bold')
+    
+    # 1. Тренды
+    if trend_data:
+        trend_df = pd.DataFrame(list(trend_data.items()), columns=['trend', 'value'])
+        axes[0,0].bar(range(len(trend_df)), [float(str(v).replace('$', '').replace(',', '')) 
+                                           for v in trend_df['value']], color='skyblue')
+        axes[0,0].set_title('Временные тренды')
+        axes[0,0].set_ylabel('Значение')
+    
+    # 2. Демография
+    if demo_data:
+        demo_df = pd.DataFrame(list(demo_data.items()), columns=['demo', 'value'])
+        axes[0,1].pie([float(str(v).replace('$', '').replace(',', '')) for v in demo_df['value']], 
+                     labels=demo_df['demo'].str.replace('DEMO_', ''), autopct='%1.1f%%')
+        axes[0,1].set_title('Демографическое распределение')
+    
+    # 3. Продукты
+    if product_data:
+        product_df = pd.DataFrame(list(product_data.items()), columns=['product', 'value'])
+        axes[0,2].barh(range(len(product_df)), 
+                      [float(str(v).replace('$', '').replace(',', '')) for v in product_df['value']],
+                      color='lightgreen')
+        axes[0,2].set_title('Продуктовый анализ')
+        axes[0,2].set_xlabel('Выручка ($)')
+    
+    # 4. Метрики
+    if metric_data:
+        metric_df = pd.DataFrame(list(metric_data.items()), columns=['metric', 'value'])
+        axes[1,0].bar(range(len(metric_df)), [float(str(v).replace('$', '')) for v in metric_df['value']],
+                     color='gold')
+        axes[1,0].set_title('Бизнес-метрики')
+        axes[1,0].set_ylabel('Значение')
+    
+    # 5. Сегменты
+    if segment_data:
+        segment_counts = {}
+        for key in segment_data.keys():
+            segment_type = key.split('_')[1]
+            segment_counts[segment_type] = segment_counts.get(segment_type, 0) + 1
+        
+        axes[1,1].bar(segment_counts.keys(), segment_counts.values(), color='lightcoral')
+        axes[1,1].set_title('Сегментация клиентов')
+        axes[1,1].set_ylabel('Количество сегментов')
+    
+    # 6. Сводная информация
+    axes[1,2].text(0.1, 0.9, 'СВОДКА MULTIPLE OUTPUTS:', fontsize=12, fontweight='bold')
+    axes[1,2].text(0.1, 0.7, f'Тренды: {len(trend_data)}', fontsize=10)
+    axes[1,2].text(0.1, 0.6, f'Демография: {len(demo_data)}', fontsize=10)
+    axes[1,2].text(0.1, 0.5, f'Продукты: {len(product_data)}', fontsize=10)
+    axes[1,2].text(0.1, 0.4, f'Метрики: {len(metric_data)}', fontsize=10)
+    axes[1,2].text(0.1, 0.3, f'Сегменты: {len(segment_data)}', fontsize=10)
+    axes[1,2].axis('off')
+    axes[1,2].set_title('Статистика выходных данных')
+    
+    plt.tight_layout()
+    plt.savefig('/scripts/multiple_outputs_analysis.png', dpi=100, bbox_inches='tight')
+    plt.close()
+    
+    print("График сохранен: multiple_outputs_analysis.png")
+    
+    print("\n" + "="*80)
+    print("АНАЛИЗ MULTIPLE OUTPUTS")
+    print("="*80)
+    print(f"Всего сгенерировано {len(results)} различных метрик")
+    print(f"Типы анализа: Тренды ({len(trend_data)}), Демография ({len(demo_data)}), "
+          f"Продукты ({len(product_data)}), Метрики ({len(metric_data)}), "
+          f"Сегменты ({len(segment_data)})")
+
+if __name__ == '__main__':
+    visualize_multiple_outputs()
+ ```
+```bash
+docker cp multiple_outputs.py namenode:/scripts/
+docker cp visualize_multiple_outputs.py namenode:/scripts/ 
+
+python3 multiple_outputs.py -r hadoop \
+  hdfs://namenode:9000/user/root/input/retail_sales_dataset.csv \
+  --output-dir hdfs://namenode:9000/user/root/output/multiple_outputs
+  
+python3 visualize_multiple_outputs.py
+
+docker cp namenode:/scripts/multiple_outputs_analysis.png ./
+
+feh multiple_outputs_analysis.png
+```
 </details>
 
 ### **4. `real_price_elasticity.py` - ЦЕНОВАЯ ЭЛАСТИЧНОСТЬ**
 ```python
 """
-📚 ТЕОРЕТИЧЕСКАЯ ОСНОВА: Сложные бизнес-метрики
+ТЕОРЕТИЧЕСКАЯ ОСНОВА: Сложные бизнес-метрики
 
 ПРОБЛЕМА: Простой анализ не показывает зависимость спроса от цены
 
@@ -1060,18 +1075,297 @@ if __name__ == '__main__':
 "ELASTICITY_Electronics_QUANTITY" → "2.1 ед."
 "SEGMENT_PRICE_Electronics_PREMIUM" → $45,200
 
-🔧 ТЕХНИКА:
+ТЕХНИКА:
 - Статистические агрегаты (mean, min, max)
 - Сегментация: BUDGET/STANDARD/PREMIUM/LUXURY
 - Анализ объемов: SINGLE/SMALL/MEDIUM/BULK
 - Соотношение цена/количество
 """
 ```
+**Создаем `real_price_elasticity.py`:**
+```python
+#!/usr/bin/env python3
+from mrjob.job import MRJob
+import statistics
+
+class RealPriceElasticity(MRJob):
+
+    def mapper(self, _, line):
+        if 'Transaction ID' in line:
+            return
+            
+        parts = line.split(',')
+        if len(parts) >= 9:
+            try:
+                category = parts[5].strip()
+                quantity = int(parts[6])
+                price_per_unit = float(parts[7])
+                total_amount = float(parts[8])
+                
+                # Анализ ценовых сегментов и поведения
+                price_segment = self.get_price_segment(price_per_unit)
+                quantity_segment = self.get_quantity_segment(quantity)
+                
+                # Эластичность: как количество меняется с ценой
+                yield f"ELASTICITY_{category}_PRICE", price_per_unit
+                yield f"ELASTICITY_{category}_QUANTITY", quantity
+                yield f"ELASTICITY_{category}_REVENUE", total_amount
+                
+                # Анализ по ценовым сегментам
+                yield f"SEGMENT_PRICE_{category}_{price_segment}", total_amount
+                yield f"SEGMENT_PRICE_COUNT_{category}_{price_segment}", 1
+                
+                # Анализ объемов покупок
+                yield f"SEGMENT_QUANTITY_{category}_{quantity_segment}", total_amount
+                
+                # Соотношение цена/количество
+                if quantity > 0:
+                    yield f"PRICE_PER_UNIT_{category}", price_per_unit
+                    
+            except (ValueError, IndexError) as e:
+                self.increment_counter('errors', 'parsing_error', 1)
+
+    def get_price_segment(self, price):
+        if price <= 20: return "BUDGET"
+        elif price <= 50: return "STANDARD"
+        elif price <= 100: return "PREMIUM"
+        else: return "LUXURY"
+
+    def get_quantity_segment(self, quantity):
+        if quantity == 1: return "SINGLE"
+        elif quantity <= 3: return "SMALL"
+        elif quantity <= 5: return "MEDIUM"
+        else: return "BULK"
+
+    def reducer(self, key, values):
+        values_list = list(values)
+        
+        if "ELASTICITY" in key:
+            if "PRICE" in key:
+                stats = {
+                    'avg': statistics.mean(values_list),
+                    'min': min(values_list),
+                    'max': max(values_list),
+                    'count': len(values_list)
+                }
+                yield key, stats
+            elif "QUANTITY" in key:
+                avg_quantity = statistics.mean(values_list)
+                yield key, f"{avg_quantity:.1f} ед."
+            else:
+                total = sum(values_list)
+                yield key, f"${total:,.2f}"
+                
+        elif "COUNT" in key:
+            count = sum(values_list)
+            yield key, count
+        elif "PRICE_PER_UNIT" in key:
+            avg_price = statistics.mean(values_list)
+            yield key, f"${avg_price:.2f}"
+        else:
+            total = sum(values_list)
+            yield key, f"${total:,.2f}"
+
+if __name__ == '__main__':
+    RealPriceElasticity.run()
+```
+<details>
+  <summary>Визуализация</summary>
+
+**4. `visualize_real_price_elasticity.py` - ЦЕНОВАЯ ЭЛАСТИЧНОСТЬ**
+```python
+#!/usr/bin/env python3
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import subprocess
+import numpy as np
+import json
+
+def get_price_data():
+    cmd = "hdfs dfs -cat /user/root/output/price_elasticity/part-*"
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    
+    data = {}
+    for line in result.stdout.strip().split('\n'):
+        if '\t' in line and 'INFO' not in line:
+            key, value = line.split('\t')
+            try:
+                key_clean = key.strip('"')
+                value_clean = value.strip().strip('"')
+                
+                # Парсим JSON данные
+                if value_clean.startswith('{'):
+                    try:
+                        # Исправляем JSON (добавляем запятые)
+                        value_fixed = value_clean.replace('" ', '", "')
+                        data[key_clean] = json.loads(value_fixed)
+                    except:
+                        data[key_clean] = value_clean
+                
+                # Парсим числа с долларом
+                elif value_clean.startswith('$'):
+                    amount = float(value_clean.replace('$', '').replace(',', ''))
+                    data[key_clean] = amount
+                
+                # Парсим обычные числа
+                else:
+                    try:
+                        amount = float(value_clean)
+                        data[key_clean] = amount
+                    except:
+                        data[key_clean] = value_clean
+                        
+            except:
+                continue
+    return data
+
+def main():
+    print("ВИЗУАЛИЗАЦИЯ: Ценовая эластичность")
+    
+    data = get_price_data()
+    
+    if not data:
+        print("Нет данных")
+        return
+    
+    # Извлекаем средние цены из JSON
+    avg_prices = {}
+    for key, value in data.items():
+        if 'ELASTICITY' in key and 'PRICE' in key and isinstance(value, dict):
+            category = key.replace('ELASTICITY_', '').replace('_PRICE', '')
+            avg_prices[category] = value.get('avg', 0)
+    
+    # Извлекаем данные по ценовым сегментам
+    segment_data = {}
+    segment_counts = {}
+    
+    for key, value in data.items():
+        if 'SEGMENT_PRICE_' in key and 'COUNT' not in key and isinstance(value, (int, float)):
+            parts = key.split('_')
+            if len(parts) >= 4:
+                category = parts[2]
+                segment = parts[3]
+                if category not in segment_data:
+                    segment_data[category] = {}
+                segment_data[category][segment] = value
+        
+        elif 'SEGMENT_PRICE_COUNT_' in key and isinstance(value, (int, float)):
+            parts = key.split('_')
+            if len(parts) >= 5:
+                category = parts[3]
+                segment = parts[4]
+                if category not in segment_counts:
+                    segment_counts[category] = {}
+                segment_counts[category][segment] = value
+    
+    # Создаем комплексный график
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(16, 12))
+    fig.suptitle('АНАЛИЗ ЦЕНОВОЙ ЭЛАСТИЧНОСТИ', fontsize=16, fontweight='bold')
+    
+    # 1. Средние цены по категориям
+    if avg_prices:
+        categories = list(avg_prices.keys())
+        prices = list(avg_prices.values())
+        
+        bars = ax1.bar(categories, prices, color=['lightcoral', 'lightgreen', 'lightblue'])
+        ax1.set_title('СРЕДНИЕ ЦЕНЫ ПО КАТЕГОРИЯМ')
+        ax1.set_ylabel('Цена ($)')
+        
+        for i, (category, price) in enumerate(zip(categories, prices)):
+            ax1.text(i, price + 5, f'${price:.1f}', ha='center', va='bottom', fontweight='bold')
+    
+    # 2. Выручка по ценовым сегментам (Beauty)
+    if 'Beauty' in segment_data:
+        segments = list(segment_data['Beauty'].keys())
+        revenues = list(segment_data['Beauty'].values())
+        total = sum(revenues)
+        
+        bars = ax2.bar(segments, revenues, color=['gold', 'lightcoral'])
+        ax2.set_title('BEAUTY: Выручка по ценовым сегментам')
+        ax2.set_ylabel('Выручка ($)')
+        
+        for i, (segment, revenue) in enumerate(zip(segments, revenues)):
+            percentage = (revenue / total) * 100
+            ax2.text(i, revenue + total*0.01, f'${revenue/1000:.0f}K\n({percentage:.1f}%)', 
+                    ha='center', va='bottom', fontsize=9, fontweight='bold')
+    
+    # 3. Выручка по ценовым сегментам (Clothing)
+    if 'Clothing' in segment_data:
+        segments = list(segment_data['Clothing'].keys())
+        revenues = list(segment_data['Clothing'].values())
+        total = sum(revenues)
+        
+        bars = ax3.bar(segments, revenues, color=['gold', 'lightcoral'])
+        ax3.set_title('CLOTHING: Выручка по ценовым сегментам')
+        ax3.set_ylabel('Выручка ($)')
+        
+        for i, (segment, revenue) in enumerate(zip(segments, revenues)):
+            percentage = (revenue / total) * 100
+            ax3.text(i, revenue + total*0.01, f'${revenue/1000:.0f}K\n({percentage:.1f}%)', 
+                    ha='center', va='bottom', fontsize=9, fontweight='bold')
+    
+    # 4. Выручка по ценовым сегментам (Electronics)
+    if 'Electronics' in segment_data:
+        segments = list(segment_data['Electronics'].keys())
+        revenues = list(segment_data['Electronics'].values())
+        total = sum(revenues)
+        
+        bars = ax4.bar(segments, revenues, color=['gold', 'lightcoral'])
+        ax4.set_title('ELECTRONICS: Выручка по ценовым сегментам')
+        ax4.set_ylabel('Выручка ($)')
+        
+        for i, (segment, revenue) in enumerate(zip(segments, revenues)):
+            percentage = (revenue / total) * 100
+            ax4.text(i, revenue + total*0.01, f'${revenue/1000:.0f}K\n({percentage:.1f}%)', 
+                    ha='center', va='bottom', fontsize=9, fontweight='bold')
+    
+    plt.tight_layout()
+    plt.savefig('/scripts/price_elasticity_analysis.png', dpi=100, bbox_inches='tight')
+    plt.close()
+    
+    print("График сохранен: price_elasticity_analysis.png")
+    
+    # Текстовая статистика
+    print(f"\nАНАЛИЗ ЦЕНОВОЙ ЭЛАСТИЧНОСТИ")
+    print("=" * 50)
+    
+    if avg_prices:
+        print("СРЕДНИЕ ЦЕНЫ:")
+        for category, price in avg_prices.items():
+            print(f"  {category}: ${price:.2f}")
+    
+    print(f"\nВЫРУЧКА ПО ЦЕНОВЫМ СЕГМЕНТАМ:")
+    for category in ['Beauty', 'Clothing', 'Electronics']:
+        if category in segment_data:
+            total = sum(segment_data[category].values())
+            print(f"\n  {category}: ${total:,.2f}")
+            for segment, revenue in segment_data[category].items():
+                percentage = (revenue / total) * 100
+                count = segment_counts.get(category, {}).get(segment, 0)
+                print(f"    {segment}: ${revenue:,.2f} ({percentage:.1f}%, {count} транзакций)")
+
+if __name__ == '__main__':
+    main()
+```
+```bash
+docker cp real_price_elasticity.py namenode:/scripts/
+docker cp visualize_real_price_elasticity.py namenode:/scripts/
+
+python3 real_price_elasticity.py -r hadoop \
+  hdfs://namenode:9000/user/root/input/retail_sales_dataset.csv \
+  --output-dir hdfs://namenode:9000/user/root/output/price_elasticity
+
+python3 visualize_real_price_elasticity.py
+docker cp namenode:/scripts/price_elasticity_analysis.png ./
+feh price_elasticity_analysis.png
+```
+</details>
 
 ### **5. `demographic_category_analysis.py` - МНОГОМЕРНАЯ ГРУППИРОВКА**
 ```python
 """
-📚 ТЕОРЕТИЧЕСКАЯ ОСНОВА: Группировка по возрасту, полу и категориям
+ТЕОРЕТИЧЕСКАЯ ОСНОВА: Группировка по возрасту, полу и категориям
 
 ПРОБЛЕМА: Простые группировки не показывают пересечения
 
@@ -1080,17 +1374,333 @@ if __name__ == '__main__':
 "AGE_CATEGORY_25-34_Books" → $15,000  
 "GENDER_AGE_CATEGORY_Female_35-44_Clothing" → $28,000
 
-🔧 ТЕХНИКА:
+ТЕХНИКА:
 - Двойные и тройные группировки
 - Иерархические ключи
 - Анализ пересечений демографии и продуктов
 """
 ```
+**Создаем `demographic_category_analysis.py`:**
+```python
+#!/usr/bin/env python3
+from mrjob.job import MRJob
+from collections import defaultdict
+
+class DemographicCategoryAnalysis(MRJob):
+
+    def mapper(self, _, line):
+        if 'Transaction ID' in line:
+            return
+            
+        parts = line.split(',')
+        if len(parts) >= 9:
+            try:
+                gender = parts[3].strip()
+                age = int(parts[4])
+                category = parts[5].strip()
+                total_amount = float(parts[8])
+                
+                age_group = self.get_age_group(age)
+                
+                # МНОГОМЕРНАЯ ГРУППИРОВКА
+                
+                # 1. Пол + Категория
+                yield f"GENDER_CATEGORY_{gender}_{category}", total_amount
+                yield f"GENDER_CATEGORY_COUNT_{gender}_{category}", 1
+                
+                # 2. Возраст + Категория  
+                yield f"AGE_CATEGORY_{age_group}_{category}", total_amount
+                yield f"AGE_CATEGORY_COUNT_{age_group}_{category}", 1
+                
+                # 3. Пол + Возраст + Категория (тройная группировка)
+                yield f"GENDER_AGE_CATEGORY_{gender}_{age_group}_{category}", total_amount
+                yield f"GENDER_AGE_CATEGORY_COUNT_{gender}_{age_group}_{category}", 1
+                
+                # 4. Общие демографические метрики
+                yield f"DEMO_GENDER_{gender}", total_amount
+                yield f"DEMO_AGE_{age_group}", total_amount
+                yield f"DEMO_CATEGORY_{category}", total_amount
+                
+            except (ValueError, IndexError) as e:
+                self.increment_counter('errors', 'parsing_error', 1)
+
+    def get_age_group(self, age):
+        if age <= 24: return "18-24"
+        elif age <= 34: return "25-34"
+        elif age <= 44: return "35-44"
+        elif age <= 54: return "45-54"
+        else: return "55+"
+
+    def reducer(self, key, values):
+        values_list = list(values)
+        
+        if "COUNT" in key:
+            count = sum(values_list)
+            yield key, count
+        else:
+            total = sum(values_list)
+            avg = total / len(values_list) if "AVG" not in key else total
+            
+            if "GENDER_AGE_CATEGORY" in key:
+                yield key, f"${total:,.2f} (ср. ${avg:.2f})"
+            else:
+                yield key, f"${total:,.2f}"
+
+if __name__ == '__main__':
+    DemographicCategoryAnalysis.run()
+```
+<details>
+  <summary>Визуализация</summary>
+
+**5. `visualize_demographic_category.py` - ДЕМОГРАФИЯ + КАТЕГОРИИ**
+```python
+#!/usr/bin/env python3
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import subprocess
+import numpy as np
+
+def get_demographic_data():
+    cmd = "hdfs dfs -cat /user/root/output/demographic_category/part-*"
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    
+    data = []
+    for line in result.stdout.strip().split('\n'):
+        if '\t' in line and 'INFO' not in line:
+            key, value = line.split('\t')
+            try:
+                key_clean = key.strip('"')
+                value_clean = value.strip().strip('"')
+                
+                # Парсим числовые значения
+                if value_clean.startswith('$'):
+                    amount = float(value_clean.replace('$', '').replace(',', ''))
+                    data.append({'key': key_clean, 'value': amount, 'type': 'revenue'})
+                else:
+                    # Пробуем как число (для COUNT)
+                    try:
+                        amount = float(value_clean)
+                        data.append({'key': key_clean, 'value': amount, 'type': 'count'})
+                    except:
+                        pass
+                        
+            except:
+                continue
+    return data
+
+def main():
+    print("ВИЗУАЛИЗАЦИЯ: Демография + категории")
+    
+    data = get_demographic_data()
+    
+    if not data:
+        print("Нет данных для анализа")
+        return
+    
+    # Анализируем структуру ключей
+    age_category_revenue = []
+    age_category_count = []
+    
+    for item in data:
+        key = item['key']
+        
+        # AGE_CATEGORY_18-24_Beauty
+        if key.startswith('AGE_CATEGORY_') and not key.startswith('AGE_CATEGORY_COUNT_'):
+            parts = key.split('_')
+            if len(parts) >= 4:
+                age_group = parts[2]
+                category = parts[3]
+                age_category_revenue.append({
+                    'age_group': age_group,
+                    'category': category,
+                    'amount': item['value']
+                })
+        
+        # AGE_CATEGORY_COUNT_18-24_Beauty
+        elif key.startswith('AGE_CATEGORY_COUNT_'):
+            parts = key.split('_')
+            if len(parts) >= 5:
+                age_group = parts[3]
+                category = parts[4]
+                age_category_count.append({
+                    'age_group': age_group,
+                    'category': category,
+                    'count': item['value']
+                })
+    
+    print(f"\nАНАЛИЗ ДЕМОГРАФИИ И КАТЕГОРИЙ")
+    print("=" * 50)
+    print(f"Возраст + Категории (выручка): {len(age_category_revenue)} комбинаций")
+    print(f"Возраст + Категории (количество): {len(age_category_count)} комбинаций")
+    
+    # Создаем графики
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(16, 12))
+    fig.suptitle('ВОЗРАСТ × КАТЕГОРИИ: Демографический анализ', 
+                fontsize=16, fontweight='bold')
+    
+    # 1. Heatmap: Возраст × Категория (Выручка)
+    if age_category_revenue:
+        # Создаем матрицу возраст × категория
+        age_groups = sorted(list(set(item['age_group'] for item in age_category_revenue)))
+        categories = sorted(list(set(item['category'] for item in age_category_revenue)))
+        
+        matrix_revenue = np.zeros((len(age_groups), len(categories)))
+        
+        for item in age_category_revenue:
+            i = age_groups.index(item['age_group'])
+            j = categories.index(item['category'])
+            matrix_revenue[i][j] = item['amount']
+        
+        im1 = ax1.imshow(matrix_revenue, cmap='YlOrRd', aspect='auto')
+        ax1.set_xticks(range(len(categories)))
+        ax1.set_yticks(range(len(age_groups)))
+        ax1.set_xticklabels(categories)
+        ax1.set_yticklabels(age_groups)
+        ax1.set_title('ВОЗРАСТ × КАТЕГОРИЯ\nHeatmap выручки ($)')
+        ax1.set_xlabel('Категории')
+        ax1.set_ylabel('Возрастные группы')
+        
+        for i in range(len(age_groups)):
+            for j in range(len(categories)):
+                if matrix_revenue[i][j] > 0:
+                    ax1.text(j, i, f'${matrix_revenue[i][j]/1000:.0f}K', 
+                            ha="center", va="center", color="black", fontsize=9,
+                            fontweight='bold')
+        
+        plt.colorbar(im1, ax=ax1, label='Выручка ($)')
+    
+    # 2. Heatmap: Возраст × Категория (Количество транзакций)
+    if age_category_count:
+        # Создаем матрицу возраст × категория
+        age_groups = sorted(list(set(item['age_group'] for item in age_category_count)))
+        categories = sorted(list(set(item['category'] for item in age_category_count)))
+        
+        matrix_count = np.zeros((len(age_groups), len(categories)))
+        
+        for item in age_category_count:
+            i = age_groups.index(item['age_group'])
+            j = categories.index(item['category'])
+            matrix_count[i][j] = item['count']
+        
+        im2 = ax2.imshow(matrix_count, cmap='Blues', aspect='auto')
+        ax2.set_xticks(range(len(categories)))
+        ax2.set_yticks(range(len(age_groups)))
+        ax2.set_xticklabels(categories)
+        ax2.set_yticklabels(age_groups)
+        ax2.set_title('ВОЗРАСТ × КАТЕГОРИЯ\nHeatmap количества транзакций')
+        ax2.set_xlabel('Категории')
+        ax2.set_ylabel('Возрастные группы')
+        
+        for i in range(len(age_groups)):
+            for j in range(len(categories)):
+                if matrix_count[i][j] > 0:
+                    ax2.text(j, i, f'{matrix_count[i][j]:.0f}', 
+                            ha="center", va="center", color="black", fontsize=9,
+                            fontweight='bold')
+        
+        plt.colorbar(im2, ax=ax2, label='Количество транзакций')
+    
+    # 3. Stacked bar: Выручка по возрастным группам
+    if age_category_revenue:
+        # Группируем по возрастным группам
+        age_totals = {}
+        for item in age_category_revenue:
+            age_group = item['age_group']
+            if age_group not in age_totals:
+                age_totals[age_group] = {}
+            age_totals[age_group][item['category']] = item['amount']
+        
+        age_groups = sorted(age_totals.keys())
+        categories = sorted(list(set(item['category'] for item in age_category_revenue)))
+        
+        x = range(len(age_groups))
+        bottom = np.zeros(len(age_groups))
+        
+        for i, category in enumerate(categories):
+            values = [age_totals[age].get(category, 0) for age in age_groups]
+            ax3.bar(x, values, bottom=bottom, label=category,
+                   color=plt.cm.Set3(i / len(categories)))
+            bottom += values
+        
+        ax3.set_xticks(x)
+        ax3.set_xticklabels(age_groups)
+        ax3.set_title('ВЫРУЧКА ПО ВОЗРАСТНЫМ ГРУППАМ\nStacked по категориям')
+        ax3.set_ylabel('Выручка ($)')
+        ax3.legend(title='Категории')
+        
+        # Добавляем общие суммы
+        for i, age_group in enumerate(age_groups):
+            total = sum(age_totals[age_group].values())
+            ax3.text(i, total + 1000, f'${total/1000:.0f}K', 
+                    ha='center', va='bottom', fontweight='bold')
+    
+    # 4. Топ комбинации Возраст × Категория
+    if age_category_revenue:
+        # Берем топ-10 по выручке
+        top_10 = sorted(age_category_revenue, key=lambda x: x['amount'], reverse=True)[:10]
+        
+        labels = [f"{item['age_group']}\n{item['category']}" for item in top_10]
+        values = [item['amount'] for item in top_10]
+        
+        bars = ax4.barh(range(len(labels)), values, color='lightgreen')
+        ax4.set_yticks(range(len(labels)))
+        ax4.set_yticklabels(labels)
+        ax4.set_title('ТОП-10: ВОЗРАСТ × КАТЕГОРИЯ\nСамые прибыльные комбинации')
+        ax4.set_xlabel('Выручка ($)')
+        
+        for i, (bar, value) in enumerate(zip(bars, values)):
+            ax4.text(value + max(values)*0.01, i, f'${value/1000:.0f}K', 
+                    va='center', fontsize=8, fontweight='bold')
+    
+    plt.tight_layout()
+    plt.savefig('/scripts/demographic_category_analysis.png', dpi=100, bbox_inches='tight')
+    plt.close()
+    
+    print("График сохранен: demographic_category_analysis.png")
+    
+    # Ключевые инсайты
+    if age_category_revenue:
+        top_combo = max(age_category_revenue, key=lambda x: x['amount'])
+        print(f"\nСАМАЯ ПРИБЫЛЬНАЯ КОМБИНАЦИЯ:")
+        print(f"  Возраст {top_combo['age_group']} покупают {top_combo['category']}")
+        print(f"  Выручка: ${top_combo['amount']:,.2f}")
+        
+        # Анализ по возрастным группам
+        print(f"\nВЫРУЧКА ПО ВОЗРАСТНЫМ ГРУППАМ:")
+        age_totals = {}
+        for item in age_category_revenue:
+            age_group = item['age_group']
+            if age_group not in age_totals:
+                age_totals[age_group] = 0
+            age_totals[age_group] += item['amount']
+        
+        for age_group in sorted(age_totals.keys()):
+            total = age_totals[age_group]
+            percentage = (total / sum(age_totals.values())) * 100
+            print(f"  {age_group}: ${total:,.2f} ({percentage:.1f}%)")
+
+if __name__ == '__main__':
+    main()
+```
+```bash
+docker cp demographic_category_analysis.py namenode:/scripts/
+docker cp visualize_demographic_category.py namenode:/scripts/
+
+python3 demographic_category_analysis.py -r hadoop \
+  hdfs://namenode:9000/user/root/input/retail_sales_dataset.csv \
+  --output-dir hdfs://namenode:9000/user/root/output/demographic_category
+python3 visualize_demographic_category.py
+
+docker cp namenode:/scripts/demographic_category_analysis.png ./
+feh demographic_category_analysis.png
+```
+</details>
 
 ### **6. `time_pattern_analysis.py` - ВРЕМЕННЫЕ ПАТТЕРНЫ**
 ```python
 """
-📚 ТЕОРЕТИЧЕСКАЯ ОСНОВА: Продажи по дням/месяцам + временные паттерны
+ ТЕОРЕТИЧЕСКАЯ ОСНОВА: Продажи по дням/месяцам + временные паттерны
 
 ПРОБЛЕМА: Временные данные без анализа паттернов
 
@@ -1099,12 +1709,423 @@ if __name__ == '__main__':
 "WEEKEND_1" → $120,500 (выходные)
 "CATEGORY_SEASON_Electronics_SUMMER" → $89,000
 
-🔧 ТЕХНИКА:
+ ТЕХНИКА:
 - Различные временные срезы: дни, недели, месяцы, сезоны
 - Анализ будни/выходные
 - Временные паттерны по категориям
 """
 ```
+**Создаем `time_pattern_analysis.py`:**
+```python
+#!/usr/bin/env python3
+from mrjob.job import MRJob
+from datetime import datetime
+
+class TimePatternAnalysis(MRJob):
+
+    def mapper(self, _, line):
+        if 'Transaction ID' in line:
+            return
+            
+        parts = line.split(',')
+        if len(parts) >= 9:
+            try:
+                date_str = parts[1].strip()
+                category = parts[5].strip()
+                total_amount = float(parts[8])
+                
+                date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+                
+                # ВРЕМЕННЫЕ ПАТТЕРНЫ
+                year = date_obj.year
+                month = date_obj.month
+                day = date_obj.day
+                weekday = date_obj.strftime('%A')  # Monday, Tuesday...
+                week_of_month = (day - 1) // 7 + 1
+                is_weekend = 1 if weekday in ['Saturday', 'Sunday'] else 0
+                
+                # Группировка по разным временным интервалам
+                yield f"YEAR_{year}", total_amount
+                yield f"YEAR_MONTH_{year}_{month:02d}", total_amount
+                yield f"MONTH_{month:02d}", total_amount
+                yield f"DAY_{day:02d}", total_amount
+                yield f"WEEKDAY_{weekday}", total_amount
+                yield f"WEEK_OF_MONTH_{week_of_month}", total_amount
+                yield f"WEEKEND_{is_weekend}", total_amount
+                
+                # Временные паттерны по категориям
+                yield f"CATEGORY_MONTH_{category}_{month:02d}", total_amount
+                yield f"CATEGORY_WEEKDAY_{category}_{weekday}", total_amount
+                yield f"CATEGORY_WEEKEND_{category}_{is_weekend}", total_amount
+                
+                # Сезонность по категориям
+                season = self.get_season(month)
+                yield f"CATEGORY_SEASON_{category}_{season}", total_amount
+                
+            except (ValueError, IndexError) as e:
+                self.increment_counter('errors', 'parsing_error', 1)
+
+    def get_season(self, month):
+        if month in [12, 1, 2]: return "WINTER"
+        elif month in [3, 4, 5]: return "SPRING"
+        elif month in [6, 7, 8]: return "SUMMER"
+        else: return "AUTUMN"
+
+    def reducer(self, key, values):
+        total = sum(values)
+        count = sum(1 for _ in values)
+        avg = total / count if count > 0 else 0
+        
+        if "WEEKDAY" in key or "DAY" in key:
+            yield key, f"${total:,.2f} (ср. ${avg:.2f}, {count} транзакций)"
+        elif "WEEKEND" in key:
+            day_type = "выходные" if "1" in key else "будни"
+            yield f"ПРОДАЖИ_{day_type}", f"${total:,.2f} (ср. ${avg:.2f})"
+        else:
+            yield key, f"${total:,.2f}"
+
+if __name__ == '__main__':
+    TimePatternAnalysis.run()
+```
+<details>
+  <summary>Визуализация</summary>
+    
+**6. `visualize_time_patterns.py` - ВРЕМЕННЫЕ ПАТТЕРНЫ**
+```python
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import pandas as pd
+import subprocess
+import re
+import numpy as np
+
+def get_time_patterns_results():
+    cmd = "hdfs dfs -cat /user/root/output/time_patterns/part-*"
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    
+    data = {}
+    for line in result.stdout.strip().split('\n'):
+        if '\t' in line:
+            parts = line.split('\t')
+            if len(parts) >= 2:
+                key = parts[0].strip().strip('"')
+                value_str = parts[1].strip().strip('"')
+                
+                # Используем регулярное выражение для извлечения числовой части
+                match = re.search(r'(\d{1,3}(?:,\d{3})*\.\d{2})', value_str)
+                if match:
+                    numeric_str = match.group(1).replace(',', '')
+                    try:
+                        value = float(numeric_str)
+                        data[key] = value
+                    except ValueError:
+                        data[key] = value_str
+                else:
+                    data[key] = value_str
+    
+    return data
+
+def visualize_time_patterns():
+    print("ВИЗУАЛИЗАЦИЯ: Временные паттерны")
+    print("Анализ продаж по месяцам, категориям и временным периодам")
+    
+    results = get_time_patterns_results()
+    print(f"Всего записей: {len(results)}")
+    
+    # Фильтруем только числовые значения
+    numeric_results = {k: v for k, v in results.items() if isinstance(v, (int, float))}
+    print(f"Числовых значений для анализа: {len(numeric_results)}")
+    
+    if not numeric_results:
+        print("Нет числовых данных для анализа")
+        return
+    
+    # Создаем графики
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(16, 12))
+    fig.suptitle('КОМПЛЕКСНЫЙ АНАЛИЗ ВРЕМЕННЫХ ПАТТЕРНОВ ПРОДАЖ', 
+                fontsize=16, fontweight='bold', y=0.98)
+    
+    # 1. Общие продажи по месяцам
+    monthly_data = {k: v for k, v in numeric_results.items() if k.startswith('MONTH_')}
+    if monthly_data:
+        months = []
+        revenues = []
+        for key, value in monthly_data.items():
+            try:
+                month_num = int(key.replace('MONTH_', ''))
+                months.append(month_num)
+                revenues.append(value)
+            except:
+                continue
+        
+        if months:
+            month_df = pd.DataFrame({'month': months, 'revenue': revenues})
+            month_df = month_df.sort_values('month')
+            
+            month_names = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 
+                          'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек']
+            
+            bars = ax1.bar([month_names[m-1] for m in month_df['month']], month_df['revenue'], 
+                          color='lightblue', alpha=0.7, edgecolor='navy')
+            ax1.set_title('ОБЩИЕ ПРОДАЖИ ПО МЕСЯЦАМ', fontweight='bold')
+            ax1.set_ylabel('Выручка ($)', fontweight='bold')
+            ax1.tick_params(axis='x', rotation=45)
+            
+            # Добавляем значения на столбцы
+            for bar, value in zip(bars, month_df['revenue']):
+                height = bar.get_height()
+                ax1.text(bar.get_x() + bar.get_width()/2., height + 1000,
+                        f'${value:,.0f}', ha='center', va='bottom', fontsize=8)
+            
+            ax1.grid(True, alpha=0.3, axis='y')
+    
+    # 2. Продажи по категориям и месяцам
+    category_month_data = {}
+    for key, value in numeric_results.items():
+        if 'CATEGORY_MONTH_' in key and isinstance(value, (int, float)):
+            parts = key.split('_')
+            if len(parts) >= 4:
+                category = parts[2]
+                month = parts[3]
+                try:
+                    month_num = int(month)
+                    if category not in category_month_data:
+                        category_month_data[category] = {}
+                    category_month_data[category][month_num] = value
+                except:
+                    continue
+    
+    if category_month_data:
+        colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7']
+        month_names = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 
+                      'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек']
+        
+        for i, (category, monthly_data) in enumerate(category_month_data.items()):
+            sorted_months = sorted(monthly_data.keys())
+            revenues = [monthly_data[month] for month in sorted_months]
+            ax2.plot([month_names[m-1] for m in sorted_months], revenues, 
+                    marker='o', linewidth=2, label=category, color=colors[i % len(colors)])
+        
+        ax2.set_title('ПРОДАЖИ ПО КАТЕГОРИЯМ И МЕСЯЦАМ', fontweight='bold')
+        ax2.set_ylabel('Выручка ($)', fontweight='bold')
+        ax2.legend()
+        ax2.tick_params(axis='x', rotation=45)
+        ax2.grid(True, alpha=0.3)
+    
+    # 3. Продажи по сезонам
+    season_data = {}
+    for key, value in numeric_results.items():
+        if 'SEASON_' in key and isinstance(value, (int, float)):
+            parts = key.split('_')
+            if len(parts) >= 4:
+                category = parts[2]
+                season = parts[3]
+                if category not in season_data:
+                    season_data[category] = {}
+                season_data[category][season] = value
+    
+    if season_data:
+        seasons_order = ['WINTER', 'SPRING', 'SUMMER', 'AUTUMN']
+        seasons_ru = ['Зима', 'Весна', 'Лето', 'Осень']
+        
+        categories = list(season_data.keys())
+        x_pos = np.arange(len(seasons_order))
+        bar_width = 0.8 / len(categories)
+        
+        for i, category in enumerate(categories):
+            values = [season_data[category].get(season, 0) for season in seasons_order]
+            ax3.bar(x_pos + i * bar_width, values, bar_width, 
+                   label=category, alpha=0.7)
+        
+        ax3.set_title('ПРОДАЖИ ПО СЕЗОНАМ', fontweight='bold')
+        ax3.set_ylabel('Выручка ($)', fontweight='bold')
+        ax3.set_xticks(x_pos + bar_width * (len(categories) - 1) / 2)
+        ax3.set_xticklabels(seasons_ru)
+        ax3.legend()
+        ax3.grid(True, alpha=0.3, axis='y')
+    
+    # 4. АЛЬТЕРНАТИВА: Продажи по годам или дням недели
+    # Проверяем доступные данные для 4-го графика
+    year_data = {k: v for k, v in numeric_results.items() if k.startswith('YEAR_') and 'MONTH' not in k}
+    weekday_data = {k: v for k, v in numeric_results.items() if 'WEEKDAY_' in k and 'CATEGORY' not in k}
+    week_data = {k: v for k, v in numeric_results.items() if 'WEEK_OF_MONTH_' in k}
+    
+    if year_data and len(year_data) > 1:
+        # График продаж по годам
+        years = []
+        revenues = []
+        for key, value in year_data.items():
+            year = key.replace('YEAR_', '')
+            years.append(year)
+            revenues.append(value)
+        
+        bars = ax4.bar(years, revenues, color='gold', alpha=0.7)
+        ax4.set_title('ПРОДАЖИ ПО ГОДАМ', fontweight='bold')
+        ax4.set_ylabel('Выручка ($)', fontweight='bold')
+        
+        for bar, value in zip(bars, revenues):
+            ax4.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 1000,
+                    f'${value:,.0f}', ha='center', va='bottom', fontsize=9)
+        ax4.grid(True, alpha=0.3, axis='y')
+        
+    elif weekday_data:
+        # График продаж по дням недели
+        weekday_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        weekday_ru = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+        
+        weekdays = []
+        revenues = []
+        for day in weekday_order:
+            key = f"WEEKDAY_{day}"
+            if key in weekday_data:
+                weekdays.append(day)
+                revenues.append(weekday_data[key])
+        
+        if weekdays:
+            bars = ax4.bar([weekday_ru[weekday_order.index(day)] for day in weekdays], 
+                          revenues, color='lightcoral', alpha=0.7)
+            ax4.set_title('ПРОДАЖИ ПО ДНЯМ НЕДЕЛИ', fontweight='bold')
+            ax4.set_ylabel('Выручка ($)', fontweight='bold')
+            ax4.tick_params(axis='x', rotation=45)
+            
+            for bar, value in zip(bars, revenues):
+                ax4.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 1000,
+                        f'${value:,.0f}', ha='center', va='bottom', fontsize=9)
+            ax4.grid(True, alpha=0.3, axis='y')
+    
+    elif week_data:
+        # График продаж по неделям месяца
+        weeks = []
+        revenues = []
+        for key, value in week_data.items():
+            try:
+                week_num = int(key.replace('WEEK_OF_MONTH_', ''))
+                weeks.append(week_num)
+                revenues.append(value)
+            except:
+                continue
+        
+        if weeks:
+            week_df = pd.DataFrame({'week': weeks, 'revenue': revenues})
+            week_df = week_df.sort_values('week')
+            
+            bars = ax4.bar(week_df['week'], week_df['revenue'], color='lightgreen', alpha=0.7)
+            ax4.set_title('ПРОДАЖИ ПО НЕДЕЛЯМ МЕСЯЦА', fontweight='bold')
+            ax4.set_xlabel('Неделя месяца')
+            ax4.set_ylabel('Выручка ($)', fontweight='bold')
+            ax4.grid(True, alpha=0.3, axis='y')
+            
+            for i, value in enumerate(week_df['revenue']):
+                ax4.text(week_df['week'].iloc[i], value + 1000, f'${value:,.0f}', 
+                        ha='center', va='bottom', fontsize=9)
+    
+    else:
+        # Если нет данных для 4-го графика, показываем информационное сообщение
+        ax4.text(0.5, 0.5, 'Нет данных для отображения\n\nДоступные данные:\n' +
+                f'- Годы: {len(year_data)}\n' +
+                f'- Дни недели: {len(weekday_data)}\n' +
+                f'- Недели месяца: {len(week_data)}', 
+                ha='center', va='center', transform=ax4.transAxes, fontsize=12)
+        ax4.set_title('ДАННЫЕ ДЛЯ ГРАФИКА ОТСУТСТВУЮТ', fontweight='bold')
+        ax4.set_xticks([])
+        ax4.set_yticks([])
+    
+    plt.tight_layout()
+    plt.savefig('/scripts/time_patterns_analysis.png', dpi=120, bbox_inches='tight')
+    plt.close()
+    
+    print(" График сохранен: time_patterns_analysis.png")
+    
+    # Детальный анализ
+    print("\n" + "="*80)
+    print("ДЕТАЛЬНЫЙ АНАЛИЗ ВРЕМЕННЫХ ПАТТЕРНОВ")
+    print("="*80)
+    
+    # Анализ по месяцам
+    if monthly_data:
+        total_revenue = sum(monthly_data.values())
+        best_month_key = max(monthly_data.items(), key=lambda x: x[1])[0]
+        worst_month_key = min(monthly_data.items(), key=lambda x: x[1])[0]
+        
+        month_names_full = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+                          'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
+        
+        try:
+            best_month_num = int(best_month_key.replace('MONTH_', ''))
+            worst_month_num = int(worst_month_key.replace('MONTH_', ''))
+            
+            print(f"\n ОБЩИЙ АНАЛИЗ ПО МЕСЯЦАМ:")
+            print(f"   Общая выручка за год: ${total_revenue:,.2f}")
+            print(f"   Лучший месяц: {month_names_full[best_month_num-1]} (${monthly_data[best_month_key]:,.2f})")
+            print(f"   Худший месяц: {month_names_full[worst_month_num-1]} (${monthly_data[worst_month_key]:,.2f})")
+        except:
+            print(f"\n ОБЩИЙ АНАЛИЗ ПО МЕСЯЦАМ:")
+            print(f"   Общая выручка за год: ${total_revenue:,.2f}")
+    
+    # Анализ по категориям
+    if category_month_data:
+        print(f"\n АНАЛИЗ ПО КАТЕГОРИЯМ:")
+        for category, monthly_data in category_month_data.items():
+            total = sum(monthly_data.values())
+            avg = total / len(monthly_data) if monthly_data else 0
+            if monthly_data:
+                best_month_val = max(monthly_data.values())
+                best_month_num = max(monthly_data.items(), key=lambda x: x[1])[0]
+                
+                print(f"   {category}:")
+                print(f"     - Общая выручка: ${total:,.2f}")
+                print(f"     - Средняя в месяц: ${avg:,.2f}")
+                print(f"     - Лучший месяц: {month_names_full[best_month_num-1]} (${best_month_val:,.2f})")
+    
+    # Анализ по сезонам
+    if season_data:
+        print(f"\n  АНАЛИЗ ПО СЕЗОНАМ:")
+        season_totals = {}
+        for category, seasons in season_data.items():
+            for season, revenue in seasons.items():
+                if season not in season_totals:
+                    season_totals[season] = 0
+                season_totals[season] += revenue
+        
+        season_names = {'WINTER': 'Зима', 'SPRING': 'Весна', 'SUMMER': 'Лето', 'AUTUMN': 'Осень'}
+        for season, total in season_totals.items():
+            print(f"   {season_names.get(season, season)}: ${total:,.2f}")
+    
+    # Анализ по годам
+    if year_data:
+        print(f"\n АНАЛИЗ ПО ГОДАМ:")
+        for year, revenue in year_data.items():
+            year_num = year.replace('YEAR_', '')
+            print(f"   {year_num} год: ${revenue:,.2f}")
+    
+    print(f"\n СВОДНАЯ СТАТИСТИКА:")
+    print(f"   Всего проанализировано записей: {len(numeric_results)}")
+    if category_month_data:
+        print(f"   Категории товаров: {list(category_month_data.keys())}")
+    print(f"   Месяцы с данными: {len(monthly_data)}")
+    if season_data:
+        print(f"   Сезоны с данными: {len(season_data)}")
+    if year_data:
+        print(f"   Годы с данными: {len(year_data)}")
+    if weekday_data:
+        print(f"   Дни недели с данными: {len(weekday_data)}")
+
+if __name__ == '__main__':
+    visualize_time_patterns()
+```
+```bash
+docker cp time_pattern_analysis.py namenode:/scripts/
+docker cp visualize_time_patterns.py namenode:/scripts/
+
+python3 time_pattern_analysis.py -r hadoop \
+  hdfs://namenode:9000/user/root/input/retail_sales_dataset.csv \
+  --output-dir hdfs://namenode:9000/user/root/output/time_patterns
+python3 visualize_time_patterns.py
+docker cp namenode:/scripts/time_patterns_analysis.png ./
+feh time_patterns_analysis.png
+```
+</details>
 
 ### **7. `revenue_dynamics.py` - ДИНАМИКА МЕТРИК**
 ```python
