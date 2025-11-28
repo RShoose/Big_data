@@ -1017,6 +1017,7 @@ docker cp visualize_composite_keys.py namenode:/scripts/
 
 # 2. Запускаем анализ
 docker-compose exec namenode bash
+export PATH="/tmp/python/bin:$PATH"
 cd /scripts
 
 python3 composite_keys.py -r hadoop \
