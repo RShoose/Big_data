@@ -510,7 +510,7 @@ class RealSecondarySort(MRJob):
 if __name__ == '__main__':
     RealSecondarySort.run()
 ```
-Копируем исправленные скрипты в контейнер
+Копируем скрипты в контейнер
 `docker cp secondary_sort.py namenode:/scripts/`
 
 Запускаем ВНУТРИ контейнера
@@ -530,7 +530,7 @@ python3 secondary_sort.py -r hadoop \
 <details>
   <summary>Визуализация</summary>
     
-### **1. `visualize_secondary_sort.py` - ВТОРИЧНАЯ СОРТИРОВКА**
+### **`visualize_secondary_sort.py` - ВТОРИЧНАЯ СОРТИРОВКА**
 ```python
 #!/usr/bin/env python3
 import subprocess
