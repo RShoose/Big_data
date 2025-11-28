@@ -2777,7 +2777,7 @@ def visualize_revenue_dynamics():
 if __name__ == '__main__':
     visualize_revenue_dynamics()
 ```
-<details>
+
 
 ```bash
 docker cp revenue_dynamics.py namenode:/scripts/
@@ -2791,6 +2791,7 @@ python3 visualize_revenue_dynamics.py
 docker cp namenode:/scripts/revenue_dynamics_analysis.png ./
 feh revenue_dynamics_analysis.png
 ```
+</details>
 
 
 ### **8. `comprehensive_time_analysis.py` - КОМПЛЕКСНЫЙ АНАЛИЗ**
