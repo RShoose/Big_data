@@ -212,6 +212,223 @@ Network Transfer: 2.1GB  ✅
 Execution Time:   3.2min ✅
 Resource Usage:   78%   ✅
 ```
+---
+
+## **Ограничения MapReduce - Когда не стоит использовать**
+
+### **Проблемы архитектуры**
+```
+MapReduce ПРОБЛЕМЫ:
+
+• Итеративные алгоритмы - Многократные проходы по данным
+• Интерактивные запросы - Высокая latency (>минуты)
+• Сложные зависимости - Цепочки MapReduce Jobs
+• Join операций - Ресурсоемкие Shuffle-стадии
+• Small Files - Проблемы производительности
+• Сложность отладки - Распределенная система
+```
+
+### **Сравнение подходов**
+```
+ПЛАТФОРМА          ЛАТЕНТНОСТЬ    ТИП НАГРУЗКИ
+MapReduce          Минуты+        Пакетная обработка
+Apache Spark       Секунды-минуты Пакетная+микро-пакеты
+Apache Flink       Миллисекунды   Реальная время
+Базы данных        Миллисекунды   Интерактивная
+```
+
+---
+
+## **Проблема итеративных вычислений**
+
+### **Пример: Машинное обучение**
+```
+ITERATIVE PROCESSING PROBLEM
+
+Data → Map → Reduce → Write → Read → Map → Reduce...
+    ↓
+На каждом шаге:                     Альтернатива:
+• Чтение с диска                    • Кэширование в памяти  
+• Запись на диск                    • Итерации в памяти
+• Высокие задержки                  • Низкая latency
+```
+
+### **Визуализация: MapReduce vs Spark**
+```
+ВРЕМЯ ВЫПОЛНЕНИЯ (10 итераций)
+MapReduce: ██████████ 100сек
+           ↑ Диск ↑ Диск ↑ Диск
+Spark:     ███ 30сек
+           ↑ Память ↑ Память
+```
+
+---
+
+## **Проблема интерактивных запросов**
+
+### **Latency сравнение**
+```
+⏱️ ВРЕМЯ ОТВЕТА СИСТЕМ
+
+MapReduce:   "Приходи завтра за результатами"
+             ↓
+             Job Setup (10-30сек) → 
+             Data Read → 
+             Map Phase → 
+             Shuffle → 
+             Reduce Phase → 
+             Output (2-10 минут)
+
+Apache Spark: "Результат через секунды"
+             ↓  
+             In-Memory (1-30 секунд)
+
+Базы данных:  "Мгновенный ответ"  
+             ↓
+             Index Lookup (1-1000мс)
+```
+
+### **Use-case сравнение**
+```
+ЗАПРОС: "Топ-10 товаров за сегодня"
+
+MapReduce:  Не подходит - очень долго
+Spark SQL:  Идеально - 5-10 секунд  
+ClickHouse: Идеально - 100-500мс
+HBase:      Хорошо - 1-3 секунды
+```
+
+---
+
+## **Сложность программирования**
+
+### **Сравнение кода**
+```python
+# MapReduce (50+ строк)
+class SalesMapper:
+    def map(self):
+        # Ручная обработка
+        # Ручная сериализация
+        # Ручная агрегация
+
+class SalesReducer:
+    def reduce(self):
+        # Ручная группировка
+        # Ручная запись
+
+# Spark (10 строк)
+df = spark.read.parquet("sales")
+result = (df
+    .groupBy("category")
+    .agg(sum("revenue"))
+    .orderBy("revenue")
+)
+```
+
+### **Проблемы разработки**
+```
+СЛОЖНОСТИ ОТЛАДКИ:
+
+• Логи распределены по кластеру
+• Нет локального дебага
+• Сложные chain-задачи
+• Ручное управление памятью
+• Проблемы с сериализацией
+```
+
+---
+
+## **Проблемы с производительностью**
+
+### **Small Files проблема**
+```
+📁 SMALL FILES 
+
+Проблема: 10,000 маленьких файлов (1MB каждый)
+         ↓
+• 10,000 мапперов (неэффективно)
+• Нагрузка на NameNode
+• Большие накладные расходы
+
+Решение:
+• Объединение в SequenceFile
+• Использование HAR
+• Предобработка данных
+```
+
+### **Проблема shuffle**
+```
+🔄 SHUFFLE - УЗКОЕ ГОРЛО
+
+Map Phase → Sort → Copy → Merge → Reduce Phase
+    ↓
+• Сеть перегружена
+• Дисковые операции
+• Сортировка больших данных
+• Проблемы с памятью
+```
+
+---
+
+## **Когда MapReduce ОПРАВДАН**
+
+### **Идеальные use-cases**
+```
+MAPREDUCE ОПРАВДАН КОГДА:
+
+• Пакетная обработка TB/PB данных
+• ETL пайплайны (раз в день/неделю)
+• Обработка логов
+• Построение индексов
+• Анализ всего датасета
+• One-time миграции данных
+```
+
+### **Архитектурные решения**
+```
+СОВРЕМЕННЫЙ ПОДХОД
+
+Lambda Architecture:
+Batch Layer (MapReduce) + Speed Layer (Spark/Flink)
+
+Или:
+MapReduce для ETL → Spark для аналитики
+                  ↓
+           Columnar Storage (Parquet)
+                  ↓
+        SQL-движки для запросов
+```
+
+---
+
+## **Эволюция экосистемы**
+
+### **Переход к современным инструментам**
+```
+ЭВОЛЮЦИЯ ОБРАБОТКИ ДАННЫХ
+
+MapReduce (2004) → Spark (2014) → Flink (2015)
+     ↓                   ↓              ↓
+Пакетная           Память         Реальное
+обработка          Stream         время
+
+HDFS → Parquet/ORC
+Hive → Spark SQL, Presto
+```
+
+### **Рекомендации по выбору**
+```
+ КОГДА ЧТО ВЫБИРАТЬ:
+
+MapReduce: Исторические данные, ETL
+Spark:     ML, Graph, Streaming
+Flink:     Real-time processing
+Presto:    Interactive queries
+ClickHouse: Analytics OLAP
+```
+
+---
+
 # **Практика**
 ---
 
@@ -2130,7 +2347,7 @@ feh time_patterns_analysis.png
 ### **7. `revenue_dynamics.py` - ДИНАМИКА МЕТРИК**
 ```python
 """
-📚 ТЕОРЕТИЧЕСКАЯ ОСНОВА: Динамика среднего чека и выручки
+ТЕОРЕТИЧЕСКАЯ ОСНОВА: Динамика среднего чека и выручки
 
 ПРОБЛЕМА: Статические метрики без трендов
 
@@ -2139,18 +2356,447 @@ feh time_patterns_analysis.png
 "ВЫРУЧКА_GENDER_CATEGORY_Male_Electronics" → $45,000
 "GROWTH_BASE_2023-02" → +15%
 
-🔧 ТЕХНИКА:
+ТЕХНИКА:
 - Вычисление среднего чека
 - Динамика по месяцам
 - Кросс-анализ демографии и категорий
 - Подготовка данных для анализа роста
 """
 ```
+**Создаем `revenue_dynamics.py`:**
+```python
+#!/usr/bin/env python3
+from mrjob.job import MRJob
+from datetime import datetime
+import statistics
+
+class RevenueDynamicsAnalysis(MRJob):
+
+    def mapper(self, _, line):
+        if 'Transaction ID' in line:
+            return
+            
+        parts = line.split(',')
+        if len(parts) >= 9:
+            try:
+                date_str = parts[1].strip()
+                gender = parts[3].strip()
+                category = parts[5].strip()
+                total_amount = float(parts[8])
+                
+                date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+                year_month = date_obj.strftime('%Y-%m')
+                
+                # ДИНАМИКА СРЕДНЕГО ЧЕКА И ВЫРУЧКИ
+                
+                # 1. Динамика среднего чека по месяцам
+                yield f"AVG_RECEIPT_MONTHLY_{year_month}", total_amount
+                yield f"AVG_RECEIPT_COUNT_{year_month}", 1
+                
+                # 2. Средний чек по полу и категориям
+                yield f"AVG_RECEIPT_GENDER_{gender}", total_amount
+                yield f"AVG_RECEIPT_GENDER_COUNT_{gender}", 1
+                
+                yield f"AVG_RECEIPT_CATEGORY_{category}", total_amount
+                yield f"AVG_RECEIPT_CATEGORY_COUNT_{category}", 1
+                
+                yield f"AVG_RECEIPT_GENDER_CATEGORY_{gender}_{category}", total_amount
+                yield f"AVG_RECEIPT_GENDER_CATEGORY_COUNT_{gender}_{category}", 1
+                
+                # 3. Выручка по месяцам
+                yield f"REVENUE_MONTHLY_{year_month}", total_amount
+                
+                # 4. Выручка по полу и категориям
+                yield f"REVENUE_GENDER_{gender}", total_amount
+                yield f"REVENUE_CATEGORY_{category}", total_amount
+                yield f"REVENUE_GENDER_CATEGORY_{gender}_{category}", total_amount
+                
+                # 5. Рост выручки (месяц к месяцу)
+                yield f"GROWTH_BASE_{year_month}", total_amount
+                
+            except (ValueError, IndexError) as e:
+                self.increment_counter('errors', 'parsing_error', 1)
+
+    def reducer(self, key, values):
+        values_list = list(values)
+        
+        if "COUNT" in key:
+            count = sum(values_list)
+            yield key, count
+        elif "AVG_RECEIPT" in key and "COUNT" not in key:
+            # Вычисляем средний чек
+            total = sum(values_list)
+            count_key = key.replace("AVG_RECEIPT", "AVG_RECEIPT_COUNT")
+            yield f"СРЕДНИЙ_ЧЕК_{key.split('_')[-1]}", f"${total/len(values_list):.2f}"
+        elif "REVENUE" in key:
+            total = sum(values_list)
+            yield f"ВЫРУЧКА_{'_'.join(key.split('_')[1:])}", f"${total:,.2f}"
+        elif "GROWTH_BASE" in key:
+            total = sum(values_list)
+            yield key, total
+        else:
+            total = sum(values_list)
+            yield key, f"${total:,.2f}"
+
+if __name__ == '__main__':
+    RevenueDynamicsAnalysis.run()
+```
+<details>
+  <summary>Визуализация</summary>
+    
+### **7. `visualize_revenue_dynamics.py` - ДИНАМИКА ВЫРУЧКИ**
+```python
+#!/usr/bin/env python3
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import pandas as pd
+import subprocess
+import re
+import numpy as np
+
+def get_revenue_dynamics_results():
+    cmd = "hdfs dfs -cat /user/root/output/revenue_dynamics/part-*"
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    
+    data = {}
+    for line in result.stdout.strip().split('\n'):
+        if '\t' in line:
+            parts = line.split('\t')
+            if len(parts) >= 2:
+                key = parts[0].strip().strip('"')
+                value_str = parts[1].strip().strip('"')
+                
+                try:
+                    if '$' in value_str:
+                        clean_value = value_str.replace('$', '').replace(',', '').split(' ')[0]
+                        value = float(clean_value)
+                    else:
+                        value = float(value_str)
+                    data[key] = value
+                except (ValueError, IndexError):
+                    data[key] = value_str
+    
+    return data
+
+def visualize_revenue_dynamics():
+    print("ВИЗУАЛИЗАЦИЯ: Динамика выручки")
+    print("Анализ среднего чека и количества транзакций")
+    
+    results = get_revenue_dynamics_results()
+    print(f"Всего получено записей: {len(results)}")
+    
+    if not results:
+        print("Нет данных для анализа")
+        return
+    
+    # Группируем данные по типам
+    avg_receipt_category = {}
+    avg_receipt_count_category = {}
+    avg_receipt_count_monthly = {}
+    gender_category_count = {}
+    monthly_revenue = {}
+    category_revenue = {}
+    gender_revenue = {}
+    gender_transaction_count = {}
+    
+    # Выведем все ключи для отладки
+    print("\nОТЛАДКА - Ключи с GENDER_CATEGORY_COUNT:")
+    for key in results.keys():
+        if 'GENDER_CATEGORY_COUNT' in key:
+            print(f"  '{key}' -> {results[key]}")
+    
+    for key, value in results.items():
+        decoded_key = key.encode().decode('unicode_escape')
+        
+        # Средний чек по категориям
+        if 'СРЕДНИЙ_ЧЕК_' in decoded_key and not any(x in decoded_key for x in ['2023', '2024', 'Female', 'Male']):
+            category = decoded_key.replace('СРЕДНИЙ_ЧЕК_', '')
+            avg_receipt_category[category] = value
+        
+        # Количество транзакций по категориям
+        elif 'AVG_RECEIPT_CATEGORY_COUNT_' in key:
+            category = key.replace('AVG_RECEIPT_CATEGORY_COUNT_', '')
+            avg_receipt_count_category[category] = value
+        
+        # Количество транзакций по месяцам
+        elif 'AVG_RECEIPT_COUNT_' in key:
+            month = key.replace('AVG_RECEIPT_COUNT_', '')
+            avg_receipt_count_monthly[month] = value
+        
+        # Количество транзакций по полу и категориям - ИСПРАВЛЕННЫЙ ПАРСИНГ
+        elif 'GENDER_CATEGORY_COUNT_' in key:
+            # Пример ключа: 'AVG_RECEIPT_GENDER_CATEGORY_COUNT_Female_Beauty'
+            # Разбиваем по подчеркиваниям
+            parts = key.split('_')
+            print(f"Отладка парсинга '{key}': parts = {parts}")
+            
+            # Ищем индексы Female/Male и категорий
+            if 'Female' in parts:
+                gender_idx = parts.index('Female')
+                if gender_idx + 1 < len(parts):
+                    gender = 'Female'
+                    category = parts[gender_idx + 1]
+                    gender_key = f"{gender}_{category}"
+                    gender_category_count[gender_key] = value
+                    print(f"  Найдено: {gender_key} = {value}")
+            
+            elif 'Male' in parts:
+                gender_idx = parts.index('Male')
+                if gender_idx + 1 < len(parts):
+                    gender = 'Male'
+                    category = parts[gender_idx + 1]
+                    gender_key = f"{gender}_{category}"
+                    gender_category_count[gender_key] = value
+                    print(f"  Найдено: {gender_key} = {value}")
+        
+        # Общее количество транзакций по полу
+        elif 'GENDER_COUNT_' in key and 'CATEGORY' not in key:
+            gender = key.replace('AVG_RECEIPT_GENDER_COUNT_', '')
+            gender_transaction_count[gender] = value
+        
+        # Выручка по месяцам
+        elif 'ВЫРУЧКА_MONTHLY_' in decoded_key:
+            month = decoded_key.replace('ВЫРУЧКА_MONTHLY_', '')
+            monthly_revenue[month] = value
+        
+        # Выручка по категориям
+        elif 'ВЫРУЧКА_CATEGORY_' in decoded_key and 'GENDER' not in decoded_key:
+            category = decoded_key.replace('ВЫРУЧКА_CATEGORY_', '')
+            category_revenue[category] = value
+        
+        # Выручка по полу
+        elif 'ВЫРУЧКА_GENDER_' in decoded_key and 'CATEGORY' not in decoded_key:
+            gender = decoded_key.replace('ВЫРУЧКА_GENDER_', '')
+            gender_revenue[gender] = value
+    
+    print(f"\nСГРУППИРОВАННЫЕ ДАННЫЕ:")
+    print(f"- Средний чек по категориям: {len(avg_receipt_category)}")
+    print(f"- Количество транзакций по категориям: {len(avg_receipt_count_category)}")
+    print(f"- Количество транзакций по месяцам: {len(avg_receipt_count_monthly)}")
+    print(f"- Распределение транзакций по полу и категориям: {len(gender_category_count)}")
+    print(f"- Общее количество транзакций по полу: {len(gender_transaction_count)}")
+    print(f"- Выручка по месяцам: {len(monthly_revenue)}")
+    print(f"- Выручка по категориям: {len(category_revenue)}")
+    print(f"- Выручка по полу: {len(gender_revenue)}")
+    
+    # Создаем графики
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(16, 12))
+    fig.suptitle('АНАЛИЗ ДИНАМИКИ ВЫРУЧКИ И ТРАНЗАКЦИЙ', 
+                fontsize=16, fontweight='bold', y=0.98)
+    
+    # 1. Средний чек по категориям
+    if avg_receipt_category:
+        categories = list(avg_receipt_category.keys())
+        amounts = list(avg_receipt_category.values())
+        
+        bars = ax1.bar(categories, amounts, color=['#FF6B6B', '#4ECDC4', '#45B7D1'], alpha=0.7)
+        ax1.set_title('СРЕДНИЙ ЧЕК ПО КАТЕГОРИЯМ', fontweight='bold')
+        ax1.set_ylabel('Средний чек ($)', fontweight='bold')
+        ax1.tick_params(axis='x', rotation=45)
+        
+        for bar, amount in zip(bars, amounts):
+            ax1.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 5,
+                    f'${amount:.2f}', ha='center', va='bottom', fontweight='bold')
+        
+        ax1.grid(True, alpha=0.3, axis='y')
+    
+    # 2. Выручка по месяцам
+    if monthly_revenue:
+        months = sorted(monthly_revenue.keys())
+        revenues = [monthly_revenue[m] for m in months]
+        
+        month_labels = []
+        for month in months:
+            if '-' in month:
+                year, month_num = month.split('-')
+                month_names = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 
+                              'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек']
+                try:
+                    month_labels.append(f"{month_names[int(month_num)-1]}\n{year}")
+                except:
+                    month_labels.append(month)
+            else:
+                month_labels.append(month)
+        
+        bars = ax2.bar(month_labels, revenues, color='lightgreen', alpha=0.7)
+        ax2.set_title('ВЫРУЧКА ПО МЕСЯЦАМ', fontweight='bold')
+        ax2.set_ylabel('Выручка ($)', fontweight='bold')
+        ax2.tick_params(axis='x', rotation=45)
+        
+        for bar, revenue in zip(bars, revenues):
+            ax2.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 1000,
+                    f'${revenue:,.0f}', ha='center', va='bottom', fontsize=8)
+        
+        ax2.grid(True, alpha=0.3, axis='y')
+    
+    # 3. Выручка по категориям
+    if category_revenue:
+        categories = list(category_revenue.keys())
+        revenues = list(category_revenue.values())
+        
+        colors = ['#FF9999', '#99FF99', '#9999FF']
+        ax3.pie(revenues, labels=categories, autopct='%1.1f%%', colors=colors,
+               startangle=90, textprops={'fontweight': 'bold'})
+        ax3.set_title('РАСПРЕДЕЛЕНИЕ ВЫРУЧКИ\nПО КАТЕГОРИЯМ', fontweight='bold')
+    
+    # 4. Транзакции по полу и категориям
+    if gender_category_count:
+        print(f"\nДАННЫЕ ДЛЯ ГРАФИКА ТРАНЗАКЦИЙ:")
+        for key, value in gender_category_count.items():
+            print(f"  {key}: {value}")
+        
+        # Группируем данные для графика
+        categories = ['Beauty', 'Clothing', 'Electronics']
+        female_counts = []
+        male_counts = []
+        
+        for category in categories:
+            female_counts.append(gender_category_count.get(f'Female_{category}', 0))
+            male_counts.append(gender_category_count.get(f'Male_{category}', 0))
+        
+        x_pos = np.arange(len(categories))
+        bar_width = 0.35
+        
+        bars1 = ax4.bar(x_pos - bar_width/2, female_counts, bar_width, 
+                       label='Женщины', color='pink', alpha=0.7)
+        bars2 = ax4.bar(x_pos + bar_width/2, male_counts, bar_width, 
+                       label='Мужчины', color='lightblue', alpha=0.7)
+        
+        ax4.set_title('ТРАНЗАКЦИИ ПО ПОЛУ И КАТЕГОРИЯМ', fontweight='bold')
+        ax4.set_ylabel('Количество транзакций', fontweight='bold')
+        ax4.set_xlabel('Категории', fontweight='bold')
+        ax4.set_xticks(x_pos)
+        ax4.set_xticklabels(categories)
+        ax4.legend()
+        ax4.grid(True, alpha=0.3, axis='y')
+        
+        # Добавляем значения на столбцы
+        for bars in [bars1, bars2]:
+            for bar in bars:
+                height = bar.get_height()
+                if height > 0:
+                    ax4.text(bar.get_x() + bar.get_width()/2, height + 2,
+                            f'{int(height)}', ha='center', va='bottom', fontsize=9)
+    else:
+        # Альтернатива: общее количество транзакций по полу
+        if gender_transaction_count:
+            genders = list(gender_transaction_count.keys())
+            counts = list(gender_transaction_count.values())
+            gender_labels = {'Female': 'Женщины', 'Male': 'Мужчины'}
+            labels = [gender_labels.get(g, g) for g in genders]
+            
+            colors = ['pink', 'lightblue']
+            bars = ax4.bar(labels, counts, color=colors, alpha=0.7)
+            ax4.set_title('ОБЩЕЕ КОЛИЧЕСТВО ТРАНЗАКЦИЙ\nПО ПОЛУ', fontweight='bold')
+            ax4.set_ylabel('Количество транзакций', fontweight='bold')
+            
+            for bar, count in zip(bars, counts):
+                ax4.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 5,
+                        f'{int(count)}', ha='center', va='bottom', fontweight='bold')
+            
+            ax4.grid(True, alpha=0.3, axis='y')
+        else:
+            ax4.text(0.5, 0.5, 'Нет данных для графика', 
+                    ha='center', va='center', transform=ax4.transAxes, fontsize=12)
+            ax4.set_title('ТРАНЗАКЦИИ ПО ПОЛУ', fontweight='bold')
+            ax4.set_xticks([])
+            ax4.set_yticks([])
+    
+    plt.tight_layout()
+    plt.savefig('/scripts/revenue_dynamics_analysis.png', dpi=120, bbox_inches='tight')
+    plt.close()
+    
+    print("\nГрафик сохранен: revenue_dynamics_analysis.png")
+    
+    # Детальный анализ
+    print("\n" + "="*80)
+    print("ДЕТАЛЬНЫЙ АНАЛИЗ ДИНАМИКИ ВЫРУЧКИ")
+    print("="*80)
+    
+    if avg_receipt_category:
+        print(f"\nСРЕДНИЙ ЧЕК ПО КАТЕГОРИЯМ:")
+        for category, amount in avg_receipt_category.items():
+            print(f"   {category}: ${amount:.2f}")
+        avg_all = sum(avg_receipt_category.values()) / len(avg_receipt_category)
+        print(f"   Средний чек по всем категориям: ${avg_all:.2f}")
+    
+    if monthly_revenue:
+        print(f"\nВЫРУЧКА ПО МЕСЯЦАМ:")
+        total_revenue = sum(monthly_revenue.values())
+        best_month = max(monthly_revenue.items(), key=lambda x: x[1])
+        worst_month = min(monthly_revenue.items(), key=lambda x: x[1])
+        print(f"   Общая выручка: ${total_revenue:,.2f}")
+        print(f"   Лучший месяц: {best_month[0]} (${best_month[1]:,.2f})")
+        print(f"   Худший месяц: {worst_month[0]} (${worst_month[1]:,.2f})")
+        print(f"   Средняя месячная выручка: ${total_revenue/len(monthly_revenue):,.2f}")
+    
+    if category_revenue:
+        print(f"\nВЫРУЧКА ПО КАТЕГОРИЯМ:")
+        total_revenue = sum(category_revenue.values())
+        for category, revenue in category_revenue.items():
+            percentage = (revenue / total_revenue) * 100
+            print(f"   {category}: ${revenue:,.2f} ({percentage:.1f}%)")
+    
+    if gender_revenue:
+        print(f"\nВЫРУЧКА ПО ПОЛУ:")
+        total_revenue = sum(gender_revenue.values())
+        for gender, revenue in gender_revenue.items():
+            percentage = (revenue / total_revenue) * 100
+            gender_name = 'Женщины' if gender == 'Female' else 'Мужчины' if gender == 'Male' else gender
+            print(f"   {gender_name}: ${revenue:,.2f} ({percentage:.1f}%)")
+    
+    if avg_receipt_count_category:
+        print(f"\nКОЛИЧЕСТВО ТРАНЗАКЦИЙ ПО КАТЕГОРИЯМ:")
+        total_transactions = sum(avg_receipt_count_category.values())
+        for category, count in avg_receipt_count_category.items():
+            percentage = (count / total_transactions) * 100
+            print(f"   {category}: {int(count)} транзакций ({percentage:.1f}%)")
+        print(f"   Всего транзакций: {int(total_transactions)}")
+    
+    if gender_transaction_count:
+        print(f"\nОБЩЕЕ КОЛИЧЕСТВО ТРАНЗАКЦИЙ ПО ПОЛУ:")
+        total_transactions = sum(gender_transaction_count.values())
+        for gender, count in gender_transaction_count.items():
+            percentage = (count / total_transactions) * 100
+            gender_name = 'Женщины' if gender == 'Female' else 'Мужчины' if gender == 'Male' else gender
+            print(f"   {gender_name}: {int(count)} транзакций ({percentage:.1f}%)")
+    
+    if gender_category_count:
+        print(f"\nТРАНЗАКЦИИ ПО ПОЛУ И КАТЕГОРИЯМ:")
+        categories = ['Beauty', 'Clothing', 'Electronics']
+        for category in categories:
+            female_count = gender_category_count.get(f'Female_{category}', 0)
+            male_count = gender_category_count.get(f'Male_{category}', 0)
+            print(f"   {category}:")
+            print(f"     - Женщины: {int(female_count)}")
+            print(f"     - Мужчины: {int(male_count)}")
+    else:
+        print(f"\nТРАНЗАКЦИИ ПО ПОЛУ И КАТЕГОРИЯМ: данные не найдены")
+
+if __name__ == '__main__':
+    visualize_revenue_dynamics()
+```
+<details>
+
+```bash
+docker cp revenue_dynamics.py namenode:/scripts/
+docker cp visualize_revenue_dynamics.py namenode:/scripts/
+
+python3 revenue_dynamics.py -r hadoop \
+  hdfs://namenode:9000/user/root/input/retail_sales_dataset.csv \
+  --output-dir hdfs://namenode:9000/user/root/output/revenue_dynamics
+
+python3 visualize_revenue_dynamics.py
+docker cp namenode:/scripts/revenue_dynamics_analysis.png ./
+feh revenue_dynamics_analysis.png
+```
+
 
 ### **8. `comprehensive_time_analysis.py` - КОМПЛЕКСНЫЙ АНАЛИЗ**
 ```python
 """
-📚 ТЕОРЕТИЧЕСКАЯ ОСНОВА: Полные пересечения измерений
+ТЕОРЕТИЧЕСКАЯ ОСНОВА: Полные пересечения измерений
 
 ПРОБЛЕМА: Простые анализа не показывают полную картину
 
@@ -2158,14 +2804,472 @@ feh time_patterns_analysis.png
 "FULL_PATTERN_Male_25-34_Electronics_MORNING" → $12,500
 "FULL_PATTERN_Female_35-44_Clothing_Saturday" → $8,200
 
-🔧 ТЕХНИКА:
+ТЕХНИКА:
 - Полные пересечения: Демография + Категория + Время
 - Анализ времени суток: MORNING/AFTERNOON/EVENING/NIGHT
 - Дни недели + время суток
 - Максимальная детализация паттернов покупок
 """
 ```
+**Создаем `comprehensive_time_analysis.py`:**
+```python
+#!/usr/bin/env python3
+from mrjob.job import MRJob
+from datetime import datetime
 
+class ComprehensiveTimeAnalysis(MRJob):
+
+    def mapper(self, _, line):
+        if 'Transaction ID' in line:
+            return
+            
+        parts = line.split(',')
+        if len(parts) >= 9:
+            try:
+                date_str = parts[1].strip()
+                gender = parts[3].strip()
+                age = int(parts[4])
+                category = parts[5].strip()
+                total_amount = float(parts[8])
+                
+                date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+                
+                # КОМПЛЕКСНЫЕ ВРЕМЕННЫЕ ПАТТЕРНЫ
+                year_month = date_obj.strftime('%Y-%m')
+                day = date_obj.day
+                weekday = date_obj.strftime('%A')
+                hour = date_obj.hour if date_obj.hour else 12  # если время не указано
+                
+                age_group = self.get_age_group(age)
+                time_of_day = self.get_time_of_day(hour)
+                
+                # 1. Продажи по дням месяца
+                yield f"DAY_OF_MONTH_{day:02d}", total_amount
+                
+                # 2. Временные паттерны по категориям
+                yield f"CATEGORY_DAY_{category}_{day:02d}", total_amount
+                yield f"CATEGORY_WEEKDAY_{category}_{weekday}", total_amount
+                yield f"CATEGORY_TIME_{category}_{time_of_day}", total_amount
+                
+                # 3. Демография + время
+                yield f"GENDER_TIME_{gender}_{time_of_day}", total_amount
+                yield f"AGE_TIME_{age_group}_{time_of_day}", total_amount
+                
+                # 4. Полные пересечения: Демография + Категория + Время
+                yield f"FULL_PATTERN_{gender}_{age_group}_{category}_{time_of_day}", total_amount
+                yield f"FULL_PATTERN_{gender}_{age_group}_{category}_{weekday}", total_amount
+                
+            except (ValueError, IndexError) as e:
+                self.increment_counter('errors', 'parsing_error', 1)
+
+    def get_age_group(self, age):
+        if age <= 24: return "18-24"
+        elif age <= 34: return "25-34"
+        elif age <= 44: return "35-44"
+        elif age <= 54: return "45-54"
+        else: return "55+"
+
+    def get_time_of_day(self, hour):
+        if 5 <= hour < 12: return "MORNING"
+        elif 12 <= hour < 17: return "AFTERNOON"
+        elif 17 <= hour < 22: return "EVENING"
+        else: return "NIGHT"
+
+    def reducer(self, key, values):
+        total = sum(values)
+        count = sum(1 for _ in values)
+        
+        if "DAY_OF_MONTH" in key:
+            day = key.split('_')[-1]
+            yield f" День {day}", f"${total:,.2f} ({count} заказов)"
+        elif "FULL_PATTERN" in key:
+            yield f" {key.replace('FULL_PATTERN_', '')}", f"${total:,.2f}"
+        elif "CATEGORY_TIME" in key or "GENDER_TIME" in key:
+            parts = key.split('_')
+            yield f" {parts[-2]} {parts[-1]}", f"${total:,.2f}"
+        else:
+            yield key, f"${total:,.2f}"
+
+if __name__ == '__main__':
+    ComprehensiveTimeAnalysis.run()
+```
+
+<details>
+  <summary>Визуализация</summary>
+
+**8. `visualize_comprehensive_time.py` - КОМПЛЕКСНЫЙ ВРЕМЕННОЙ АНАЛИЗ**
+```python
+#!/usr/bin/env python3
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import pandas as pd
+import subprocess
+import re
+import numpy as np
+
+def get_comprehensive_time_results():
+    cmd = "hdfs dfs -cat /user/root/output/comprehensive_time/part-*"
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    
+    data = {}
+    for line in result.stdout.strip().split('\n'):
+        if '\t' in line:
+            parts = line.split('\t')
+            if len(parts) >= 2:
+                key = parts[0].strip().strip('"')
+                value_str = parts[1].strip().strip('"')
+                
+                try:
+                    if '$' in value_str:
+                        clean_value = value_str.replace('$', '').replace(',', '').split(' ')[0]
+                        value = float(clean_value)
+                    else:
+                        value = float(value_str)
+                    data[key] = value
+                except (ValueError, IndexError):
+                    data[key] = value_str
+    
+    return data
+
+def visualize_comprehensive_time():
+    print("ВИЗУАЛИЗАЦИЯ: Комплексный временной анализ")
+    print("Анализ продаж по времени суток, возрастам и категориям")
+    
+    results = get_comprehensive_time_results()
+    print(f"Всего получено записей: {len(results)}")
+    
+    if not results:
+        print("Нет данных для анализа")
+        return
+    
+    # Группируем данные по всем типам с правильной обработкой пробелов
+    age_time_data = {}           # AGE_TIME_
+    category_day_data = {}       # CATEGORY_DAY_
+    gender_age_category_data = {} #  Female_,  Male_ (с пробелом!)
+    
+    # Специальная обработка для ключей с пробелами
+    female_data = {}
+    male_data = {}
+    
+    for key, value in results.items():
+        # Продажи по возрастам и времени суток
+        if key.startswith('AGE_TIME_'):
+            parts = key.replace('AGE_TIME_', '').split('_')
+            if len(parts) >= 2:
+                age_group = parts[0]
+                time_of_day = parts[1]
+                age_time_data[f"{age_group}_{time_of_day}"] = value
+        
+        # Продажи по категориям и дням месяца
+        elif key.startswith('CATEGORY_DAY_'):
+            parts = key.replace('CATEGORY_DAY_', '').split('_')
+            if len(parts) >= 2:
+                category = parts[0]
+                day = parts[1]
+                category_day_data[f"{category}_{day}"] = value
+        
+        # Обработка ключей с пробелами в начале
+        elif key.startswith(' Female_'):
+            # Пример: ' Female_18-24_Beauty_AFTERNOON'
+            parts = key.split('_')
+            if len(parts) >= 4:
+                # Убираем пробел из первого элемента
+                gender = parts[0].strip()  # 'Female'
+                age_group = parts[1]       # '18-24'
+                category = parts[2]        # 'Beauty'
+                time_period = parts[3]     # 'AFTERNOON' или 'Friday'
+                
+                # Сохраняем в разных форматах
+                key_full = f"{gender}_{age_group}_{category}_{time_period}"
+                gender_age_category_data[key_full] = value
+                female_data[key_full] = value
+        
+        elif key.startswith(' Male_'):
+            # Пример: ' Male_18-24_Beauty_AFTERNOON'
+            parts = key.split('_')
+            if len(parts) >= 4:
+                # Убираем пробел из первого элемента
+                gender = parts[0].strip()  # 'Male'
+                age_group = parts[1]       # '18-24'
+                category = parts[2]        # 'Beauty'
+                time_period = parts[3]     # 'AFTERNOON' или 'Friday'
+                
+                # Сохраняем в разных форматах
+                key_full = f"{gender}_{age_group}_{category}_{time_period}"
+                gender_age_category_data[key_full] = value
+                male_data[key_full] = value
+    
+    print(f"\nСГРУППИРОВАННЫЕ ДАННЫЕ:")
+    print(f"- Возраст + время: {len(age_time_data)}")
+    print(f"- Категория + день: {len(category_day_data)}")
+    print(f"- Полные паттерны (Female): {len(female_data)}")
+    print(f"- Полные паттерны (Male): {len(male_data)}")
+    print(f"- Все полные паттерны: {len(gender_age_category_data)}")
+    
+    # Выведем несколько примеров полных паттернов для отладки
+    if gender_age_category_data:
+        print(f"\nПримеры полных паттернов:")
+        for i, (key, value) in enumerate(list(gender_age_category_data.items())[:5]):
+            print(f"  {i+1}. {key} -> ${value:,.2f}")
+    
+    # Создаем графики
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(16, 12))
+    fig.suptitle('КОМПЛЕКСНЫЙ ВРЕМЕННОЙ АНАЛИЗ ПРОДАЖ', 
+                fontsize=16, fontweight='bold', y=0.98)
+    
+    # 1. Продажи по возрастам и времени суток (тепловая карта)
+    if age_time_data:
+        age_groups = sorted(list(set([k.split('_')[0] for k in age_time_data.keys()])))
+        time_periods = sorted(list(set([k.split('_')[1] for k in age_time_data.keys()])))
+        
+        # Создаем матрицу данных
+        age_time_matrix = np.zeros((len(age_groups), len(time_periods)))
+        
+        for i, age in enumerate(age_groups):
+            for j, time in enumerate(time_periods):
+                key = f"{age}_{time}"
+                age_time_matrix[i, j] = age_time_data.get(key, 0)
+        
+        # Строим тепловую карту
+        im = ax1.imshow(age_time_matrix, cmap='YlOrRd', aspect='auto')
+        ax1.set_title('ПРОДАЖИ: ВОЗРАСТ И ВРЕМЯ СУТОК', fontweight='bold')
+        ax1.set_xlabel('Время суток', fontweight='bold')
+        ax1.set_ylabel('Возрастные группы', fontweight='bold')
+        ax1.set_xticks(range(len(time_periods)))
+        ax1.set_xticklabels(time_periods, rotation=45)
+        ax1.set_yticks(range(len(age_groups)))
+        ax1.set_yticklabels(age_groups)
+        
+        # Добавляем значения в ячейки
+        for i in range(len(age_groups)):
+            for j in range(len(time_periods)):
+                value = age_time_matrix[i, j]
+                if value > 0:
+                    ax1.text(j, i, f'${value/1000:.0f}K', 
+                            ha='center', va='center', fontweight='bold', fontsize=8)
+        
+        plt.colorbar(im, ax=ax1, label='Выручка ($)')
+    else:
+        ax1.text(0.5, 0.5, 'Нет данных по возрастам и времени', 
+                ha='center', va='center', transform=ax1.transAxes, fontsize=12)
+        ax1.set_title('ПРОДАЖИ: ВОЗРАСТ И ВРЕМЯ СУТОК', fontweight='bold')
+        ax1.set_xticks([])
+        ax1.set_yticks([])
+    
+    # 2. Продажи по категориям и дням месяца
+    if category_day_data:
+        # Группируем по категориям
+        categories = sorted(list(set([k.split('_')[0] for k in category_day_data.keys()])))
+        days = sorted(list(set([int(k.split('_')[1]) for k in category_day_data.keys()])))
+        
+        # Собираем данные для графика
+        category_revenues = {}
+        for category in categories:
+            revenues = []
+            for day in days:
+                key = f"{category}_{day:02d}" if day < 10 else f"{category}_{day}"
+                revenues.append(category_day_data.get(key, 0))
+            category_revenues[category] = revenues
+        
+        # Строим линейные графики для всех категорий
+        colors = ['#FF6B6B', '#4ECDC4', '#45B7D1']
+        for i, (category, revenues) in enumerate(category_revenues.items()):
+            if i < len(colors):  # Ограничиваем количество цветов
+                ax2.plot(days, revenues, marker='o', linewidth=2, 
+                        label=category, color=colors[i], markersize=3, alpha=0.7)
+        
+        ax2.set_title('ДИНАМИКА ПРОДАЖ ПО КАТЕГОРИЯМ\nИ ДНЯМ МЕСЯЦА', fontweight='bold')
+        ax2.set_xlabel('День месяца', fontweight='bold')
+        ax2.set_ylabel('Выручка ($)', fontweight='bold')
+        ax2.legend()
+        ax2.grid(True, alpha=0.3)
+        ax2.set_xlim(min(days), max(days))
+    else:
+        ax2.text(0.5, 0.5, 'Нет данных по категориям и дням', 
+                ha='center', va='center', transform=ax2.transAxes, fontsize=12)
+        ax2.set_title('ДИНАМИКА ПРОДАЖ ПО КАТЕГОРИЯМ\nИ ДНЯМ МЕСЯЦА', fontweight='bold')
+        ax2.set_xticks([])
+        ax2.set_yticks([])
+    
+    # 3. Сравнение продаж по полу (суммарно)
+    if female_data or male_data:
+        female_total = sum(female_data.values()) if female_data else 0
+        male_total = sum(male_data.values()) if male_data else 0
+        
+        genders = ['Женщины', 'Мужчины']
+        totals = [female_total, male_total]
+        colors = ['pink', 'lightblue']
+        
+        bars = ax3.bar(genders, totals, color=colors, alpha=0.7)
+        ax3.set_title('СРАВНЕНИЕ ПРОДАЖ ПО ПОЛУ', fontweight='bold')
+        ax3.set_ylabel('Выручка ($)', fontweight='bold')
+        
+        for bar, total in zip(bars, totals):
+            ax3.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 1000,
+                    f'${total/1000:.1f}K', ha='center', va='bottom', fontweight='bold')
+        
+        ax3.grid(True, alpha=0.3, axis='y')
+    else:
+        ax3.text(0.5, 0.5, 'Нет данных по полу', 
+                ha='center', va='center', transform=ax3.transAxes, fontsize=12)
+        ax3.set_title('СРАВНЕНИЕ ПРОДАЖ ПО ПОЛУ', fontweight='bold')
+        ax3.set_xticks([])
+        ax3.set_yticks([])
+    
+    # 4. Топ полные паттерны (пол + возраст + категория + время)
+    if gender_age_category_data:
+        # Берем топ-8 самых прибыльных паттернов
+        top_patterns = sorted(gender_age_category_data.items(), 
+                             key=lambda x: x[1], reverse=True)[:8]
+        
+        # Форматируем названия паттернов для читаемости
+        patterns = []
+        revenues = []
+        for pattern, revenue in top_patterns:
+            parts = pattern.split('_')
+            if len(parts) >= 4:
+                gender_ru = 'М' if parts[0] == 'Male' else 'Ж'
+                age = parts[1]
+                category = parts[2]
+                time = parts[3]
+                
+                # Создаем читаемое название
+                pattern_name = f"{gender_ru}-{age}\n{category}-{time}"
+                patterns.append(pattern_name)
+                revenues.append(revenue)
+        
+        bars = ax4.barh(patterns, revenues, color='lightgreen', alpha=0.7)
+        ax4.set_title('ТОП-8 ПОЛНЫХ ПАТТЕРНОВ\n(Пол+Возраст+Категория+Время)', fontweight='bold')
+        ax4.set_xlabel('Выручка ($)', fontweight='bold')
+        
+        for bar, value in zip(bars, revenues):
+            ax4.text(value + 1000, bar.get_y() + bar.get_height()/2, 
+                    f'${value/1000:.1f}K', va='center', fontsize=8)
+        
+        # Настраиваем внешний вид
+        ax4.grid(True, alpha=0.3, axis='x')
+    else:
+        # Альтернативный график - распределение по времени суток из age_time_data
+        if age_time_data:
+            # Группируем по времени суток
+            time_totals = {}
+            for key, value in age_time_data.items():
+                time_of_day = key.split('_')[1]
+                if time_of_day not in time_totals:
+                    time_totals[time_of_day] = 0
+                time_totals[time_of_day] += value
+            
+            times = list(time_totals.keys())
+            revenues = list(time_totals.values())
+            
+            # Переводим на русский
+            time_translation = {
+                'MORNING': 'Утро', 'AFTERNOON': 'День', 
+                'EVENING': 'Вечер', 'NIGHT': 'Ночь'
+            }
+            labels = [time_translation.get(t, t) for t in times]
+            
+            colors = ['#FFD700', '#87CEEB', '#FF69B4', '#4B0082']
+            bars = ax4.bar(labels, revenues, color=colors, alpha=0.7)
+            ax4.set_title('ПРОДАЖИ ПО ВРЕМЕНИ СУТОК', fontweight='bold')
+            ax4.set_ylabel('Выручка ($)', fontweight='bold')
+            
+            for bar, revenue in zip(bars, revenues):
+                ax4.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 1000,
+                        f'${revenue/1000:.0f}K', ha='center', va='bottom', fontweight='bold')
+            
+            ax4.grid(True, alpha=0.3, axis='y')
+        else:
+            ax4.text(0.5, 0.5, 'Нет данных для графика', 
+                    ha='center', va='center', transform=ax4.transAxes, fontsize=12)
+            ax4.set_title('ДАННЫЕ ДЛЯ ГРАФИКА', fontweight='bold')
+            ax4.set_xticks([])
+            ax4.set_yticks([])
+    
+    plt.tight_layout()
+    plt.savefig('/scripts/comprehensive_time_analysis.png', dpi=120, bbox_inches='tight')
+    plt.close()
+    
+    print("\nГрафик сохранен: comprehensive_time_analysis.png")
+    
+    # Детальный анализ
+    print("\n" + "="*80)
+    print("ДЕТАЛЬНЫЙ АНАЛИЗ ВРЕМЕННЫХ ПАТТЕРНОВ")
+    print("="*80)
+    
+    if age_time_data:
+        print(f"\nАНАЛИЗ ПО ВОЗРАСТУ И ВРЕМЕНИ:")
+        age_totals = {}
+        time_totals = {}
+        
+        for key, value in age_time_data.items():
+            age_group = key.split('_')[0]
+            time_of_day = key.split('_')[1]
+            
+            if age_group not in age_totals:
+                age_totals[age_group] = 0
+            age_totals[age_group] += value
+            
+            if time_of_day not in time_totals:
+                time_totals[time_of_day] = 0
+            time_totals[time_of_day] += value
+        
+        total_all = sum(age_totals.values())
+        
+        print(f"  По возрастам:")
+        for age, revenue in sorted(age_totals.items()):
+            percentage = (revenue / total_all) * 100
+            print(f"    {age}: ${revenue:,.2f} ({percentage:.1f}%)")
+        
+        print(f"  По времени суток:")
+        time_translation = {'MORNING': 'Утро', 'AFTERNOON': 'День', 'EVENING': 'Вечер', 'NIGHT': 'Ночь'}
+        for time, revenue in sorted(time_totals.items()):
+            percentage = (revenue / total_all) * 100
+            time_name = time_translation.get(time, time)
+            print(f"    {time_name}: ${revenue:,.2f} ({percentage:.1f}%)")
+    
+    if category_day_data:
+        print(f"\nАНАЛИЗ ПО КАТЕГОРИЯМ:")
+        category_totals = {}
+        for key, value in category_day_data.items():
+            category = key.split('_')[0]
+            if category not in category_totals:
+                category_totals[category] = 0
+            category_totals[category] += value
+        
+        total_categories = sum(category_totals.values())
+        for category, total in sorted(category_totals.items()):
+            percentage = (total / total_categories) * 100
+            print(f"   {category}: ${total:,.2f} ({percentage:.1f}%)")
+    
+    if female_data or male_data:
+        print(f"\nАНАЛИЗ ПО ПОЛУ:")
+        female_total = sum(female_data.values()) if female_data else 0
+        male_total = sum(male_data.values()) if male_data else 0
+        total_gender = female_total + male_total
+        
+        if total_gender > 0:
+            print(f"   Женщины: ${female_total:,.2f} ({(female_total/total_gender)*100:.1f}%)")
+            print(f"   Мужчины: ${male_total:,.2f} ({(male_total/total_gender)*100:.1f}%)")
+
+if __name__ == '__main__':
+    visualize_comprehensive_time()
+```
+```bash
+docker cp comprehensive_time_analysis.py namenode:/scripts/
+docker cp visualize_comprehensive_time.py namenode:/scripts/
+
+python3 comprehensive_time_analysis.py -r hadoop \
+  hdfs://namenode:9000/user/root/input/retail_sales_dataset.csv \
+  --output-dir hdfs://namenode:9000/user/root/output/comprehensive_time
+python3 visualize_comprehensive_time.py
+
+docker cp namenode:/scripts/comprehensive_time_analysis.png ./
+feh comprehensive_time_analysis.png
+
+```
+</details>
 ---
 
 ## **📊 СВОДНАЯ ТАБЛИЦА СВЯЗИ ТЕОРИИ И ПРАКТИКИ**
@@ -2183,303 +3287,6 @@ feh time_patterns_analysis.png
 
 ---
 
-
-
-### **2. СОСТАВНЫЕ КЛЮЧИ ДЛЯ МНОГОМЕРНОГО АНАЛИЗА**
-
-**Создаем `composite_keys.py`:**
-```python
-#!/usr/bin/env python3
-from mrjob.job import MRJob
-from datetime import datetime
-
-class CompositeKeysAnalysis(MRJob):
-
-    def mapper(self, _, line):
-        if 'Transaction ID' in line:
-            return
-            
-        parts = line.split(',')
-        if len(parts) >= 9:
-            try:
-                date_str = parts[1].strip()
-                gender = parts[3].strip()
-                age = int(parts[4])
-                category = parts[5].strip()
-                total_amount = float(parts[8])
-                
-                date_obj = datetime.strptime(date_str, '%Y-%m-%d')
-                year_month = date_obj.strftime('%Y-%m')
-                age_group = self.get_age_group(age)
-                season = self.get_season(date_obj.month)
-                
-                # 🔥 СОСТАВНЫЕ КЛЮЧИ - многомерный анализ в одном проходе
-                
-                # Временные срезы
-                yield f"TIME_{year_month}", total_amount
-                yield f"TIME_SEASON_{season}", total_amount
-                
-                # Демографические срезы  
-                yield f"DEMO_GENDER_{gender}", total_amount
-                yield f"DEMO_AGE_{age_group}", total_amount
-                
-                # Продуктовые срезы
-                yield f"PRODUCT_{category}", total_amount
-                
-                # 🔥 КРОСС-СЕКЦИОННЫЕ АНАЛИЗЫ (составные ключи)
-                yield f"CROSS_GENDER_CATEGORY_{gender}_{category}", total_amount
-                yield f"CROSS_AGE_CATEGORY_{age_group}_{category}", total_amount
-                yield f"CROSS_SEASON_CATEGORY_{season}_{category}", total_amount
-                yield f"CROSS_GENDER_AGE_{gender}_{age_group}", total_amount
-                
-                # Тройные пересечения
-                yield f"TRIPLE_{gender}_{age_group}_{category}", total_amount
-                
-            except (ValueError, IndexError) as e:
-                self.increment_counter('errors', 'parsing_error', 1)
-
-    def get_age_group(self, age):
-        if age <= 24: return "18-24"
-        elif age <= 34: return "25-34" 
-        elif age <= 44: return "35-44"
-        elif age <= 54: return "45-54"
-        else: return "55+"
-
-    def get_season(self, month):
-        if month in [12, 1, 2]: return "WINTER"
-        elif month in [3, 4, 5]: return "SPRING"
-        elif month in [6, 7, 8]: return "SUMMER"
-        else: return "AUTUMN"
-
-    def reducer(self, key, values):
-        total = sum(values)
-        count = sum(1 for _ in values)
-        
-        if key.startswith("TRIPLE"):
-            yield key, f"${total:,.2f} ({count} покупок)"
-        else:
-            yield key, f"${total:,.2f}"
-
-if __name__ == '__main__':
-    CompositeKeysAnalysis.run()
-```
-
-### **3. MULTIPLE OUTPUTS - КОМПЛЕКСНАЯ АНАЛИТИКА**
-
-**Создаем `multiple_outputs.py`:**
-```python
-#!/usr/bin/env python3
-from mrjob.job import MRJob
-from datetime import datetime
-import json
-
-class MultipleOutputsAnalysis(MRJob):
-
-    def mapper(self, _, line):
-        if 'Transaction ID' in line:
-            return
-            
-        parts = line.split(',')
-        if len(parts) >= 9:
-            try:
-                date_str = parts[1].strip()
-                gender = parts[3].strip()
-                age = int(parts[4])
-                category = parts[5].strip()
-                quantity = int(parts[6])
-                price_per_unit = float(parts[7])
-                total_amount = float(parts[8])
-                
-                date_obj = datetime.strptime(date_str, '%Y-%m-%d')
-                year_month = date_obj.strftime('%Y-%m')
-                age_group = self.get_age_group(age)
-                
-                # 🔥 MULTIPLE OUTPUTS В ОДНОМ MAPPER
-                
-                # 1. ВЫХОД: Временные тренды
-                yield f"TREND_MONTHLY_{year_month}", total_amount
-                yield f"TREND_MONTHLY_COUNT_{year_month}", 1
-                
-                # 2. ВЫХОД: Демография
-                yield f"DEMO_GENDER_{gender}", total_amount
-                yield f"DEMO_AGE_{age_group}", total_amount
-                
-                # 3. ВЫХОД: Продуктовый анализ
-                yield f"PRODUCT_{category}_REVENUE", total_amount
-                yield f"PRODUCT_{category}_QUANTITY", quantity
-                yield f"PRODUCT_{category}_AVG_PRICE", price_per_unit
-                
-                # 4. ВЫХОД: Метрики эффективности
-                yield f"METRIC_AVG_RECEIPT", total_amount
-                yield f"METRIC_TOTAL_QUANTITY", quantity
-                yield f"METRIC_UNIQUE_CATEGORIES", category
-                
-                # 5. ВЫХОД: Сегменты покупателей
-                if total_amount > 200:
-                    yield f"SEGMENT_HIGH_VALUE_{gender}_{age_group}", total_amount
-                elif total_amount > 100:
-                    yield f"SEGMENT_MEDIUM_VALUE_{gender}_{age_group}", total_amount
-                else:
-                    yield f"SEGMENT_LOW_VALUE_{gender}_{age_group}", total_amount
-                    
-            except (ValueError, IndexError) as e:
-                self.increment_counter('errors', 'parsing_error', 1)
-
-    def get_age_group(self, age):
-        if age <= 24: return "18-24"
-        elif age <= 34: return "25-34"
-        elif age <= 44: return "35-44"
-        elif age <= 54: return "45-54"
-        else: return "55+"
-
-    def reducer(self, key, values):
-        values_list = list(values)
-        
-        if "COUNT" in key:
-            count = sum(values_list)
-            yield key, count
-        elif "AVG_PRICE" in key or "AVG_RECEIPT" in key:
-            avg = sum(values_list) / len(values_list)
-            yield key, f"${avg:.2f}"
-        elif "UNIQUE" in key:
-            unique_count = len(set(values_list))
-            yield key, unique_count
-        else:
-            total = sum(values_list)
-            yield key, f"${total:,.2f}"
-
-if __name__ == '__main__':
-    MultipleOutputsAnalysis.run()
-```
-
-### **4. ЦЕНОВАЯ ЭЛАСТИЧНОСТЬ (исправленная)**
-
-**Создаем `real_price_elasticity.py`:**
-```python
-#!/usr/bin/env python3
-from mrjob.job import MRJob
-import statistics
-
-class RealPriceElasticity(MRJob):
-
-    def mapper(self, _, line):
-        if 'Transaction ID' in line:
-            return
-            
-        parts = line.split(',')
-        if len(parts) >= 9:
-            try:
-                category = parts[5].strip()
-                quantity = int(parts[6])
-                price_per_unit = float(parts[7])
-                total_amount = float(parts[8])
-                
-                # Анализ ценовых сегментов и поведения
-                price_segment = self.get_price_segment(price_per_unit)
-                quantity_segment = self.get_quantity_segment(quantity)
-                
-                # Эластичность: как количество меняется с ценой
-                yield f"ELASTICITY_{category}_PRICE", price_per_unit
-                yield f"ELASTICITY_{category}_QUANTITY", quantity
-                yield f"ELASTICITY_{category}_REVENUE", total_amount
-                
-                # Анализ по ценовым сегментам
-                yield f"SEGMENT_PRICE_{category}_{price_segment}", total_amount
-                yield f"SEGMENT_PRICE_COUNT_{category}_{price_segment}", 1
-                
-                # Анализ объемов покупок
-                yield f"SEGMENT_QUANTITY_{category}_{quantity_segment}", total_amount
-                
-                # Соотношение цена/количество
-                if quantity > 0:
-                    yield f"PRICE_PER_UNIT_{category}", price_per_unit
-                    
-            except (ValueError, IndexError) as e:
-                self.increment_counter('errors', 'parsing_error', 1)
-
-    def get_price_segment(self, price):
-        if price <= 20: return "BUDGET"
-        elif price <= 50: return "STANDARD"
-        elif price <= 100: return "PREMIUM"
-        else: return "LUXURY"
-
-    def get_quantity_segment(self, quantity):
-        if quantity == 1: return "SINGLE"
-        elif quantity <= 3: return "SMALL"
-        elif quantity <= 5: return "MEDIUM"
-        else: return "BULK"
-
-    def reducer(self, key, values):
-        values_list = list(values)
-        
-        if "ELASTICITY" in key:
-            if "PRICE" in key:
-                stats = {
-                    'avg': statistics.mean(values_list),
-                    'min': min(values_list),
-                    'max': max(values_list),
-                    'count': len(values_list)
-                }
-                yield key, stats
-            elif "QUANTITY" in key:
-                avg_quantity = statistics.mean(values_list)
-                yield key, f"{avg_quantity:.1f} ед."
-            else:
-                total = sum(values_list)
-                yield key, f"${total:,.2f}"
-                
-        elif "COUNT" in key:
-            count = sum(values_list)
-            yield key, count
-        elif "PRICE_PER_UNIT" in key:
-            avg_price = statistics.mean(values_list)
-            yield key, f"${avg_price:.2f}"
-        else:
-            total = sum(values_list)
-            yield key, f"${total:,.2f}"
-
-if __name__ == '__main__':
-    RealPriceElasticity.run()
-```
-
----
-
-## **🚀 ЗАПУСК ИСПРАВЛЕННЫХ СКРИПТОВ**
-
-```bash
-# Копируем исправленные скрипты в контейнер
-docker cp secondary_sort.py namenode:/scripts/
-docker cp composite_keys.py namenode:/scripts/ 
-docker cp multiple_outputs.py namenode:/scripts/
-docker cp real_price_elasticity.py namenode:/scripts/
-
-# Запускаем ВНУТРИ контейнера
-docker-compose exec namenode bash
-export PATH="/tmp/python/bin:$PATH"
-cd /scripts
-
-# 1. Запускаем ВТОРИЧНУЮ СОРТИРОВКУ
-python3 secondary_sort.py -r hadoop \
-  hdfs://namenode:9000/user/root/input/retail_sales_dataset.csv \
-  --output-dir hdfs://namenode:9000/user/root/output/secondary_sort
-
-# 2. Запускаем СОСТАВНЫЕ КЛЮЧИ
-python3 composite_keys.py -r hadoop \
-  hdfs://namenode:9000/user/root/input/retail_sales_dataset.csv \
-  --output-dir hdfs://namenode:9000/user/root/output/composite_keys
-
-# 3. Запускаем MULTIPLE OUTPUTS
-python3 multiple_outputs.py -r hadoop \
-  hdfs://namenode:9000/user/root/input/retail_sales_dataset.csv \
-  --output-dir hdfs://namenode:9000/user/root/output/multiple_outputs
-
-# 4. Запускаем ЦЕНОВУЮ ЭЛАСТИЧНОСТЬ
-python3 real_price_elasticity.py -r hadoop \
-  hdfs://namenode:9000/user/root/input/retail_sales_dataset.csv \
-  --output-dir hdfs://namenode:9000/user/root/output/price_elasticity
-```
-
----
 
 
 
