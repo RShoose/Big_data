@@ -587,6 +587,115 @@ if __name__ == '__main__':
 <details>
   <summary>Визуализация</summary>
     
+**3. `visualize_multiple_outputs.py` - MULTIPLE OUTPUTS**
+```python
+#!/usr/bin/env python3
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import pandas as pd
+import subprocess
+
+def get_multiple_outputs_results():
+    cmd = "hdfs dfs -cat /user/root/output/multiple_outputs/part-*"
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    
+    data = {}
+    for line in result.stdout.strip().split('\n'):
+        if '\t' in line:
+            key, value = line.split('\t')
+            data[key] = value
+    return data
+
+def visualize_multiple_outputs():
+    print("ВИЗУАЛИЗАЦИЯ: Multiple Outputs")
+    print("Теоретическая основа: Комплексная аналитика из одного Job")
+    
+    results = get_multiple_outputs_results()
+    
+    # Группируем по типам выходных данных
+    trend_data = {k: v for k, v in results.items() if k.startswith('TREND_')}
+    demo_data = {k: v for k, v in results.items() if k.startswith('DEMO_')}
+    product_data = {k: v for k, v in results.items() if k.startswith('PRODUCT_')}
+    metric_data = {k: v for k, v in results.items() if k.startswith('METRIC_')}
+    segment_data = {k: v for k, v in results.items() if k.startswith('SEGMENT_')}
+    
+    fig, axes = plt.subplots(2, 3, figsize=(18, 12))
+    fig.suptitle('MULTIPLE OUTPUTS: Комплексная аналитика из одного Job', 
+                fontsize=16, fontweight='bold')
+    
+    # 1. Тренды
+    if trend_data:
+        trend_df = pd.DataFrame(list(trend_data.items()), columns=['trend', 'value'])
+        axes[0,0].bar(range(len(trend_df)), [float(str(v).replace('$', '').replace(',', '')) 
+                                           for v in trend_df['value']], color='skyblue')
+        axes[0,0].set_title('Временные тренды')
+        axes[0,0].set_ylabel('Значение')
+    
+    # 2. Демография
+    if demo_data:
+        demo_df = pd.DataFrame(list(demo_data.items()), columns=['demo', 'value'])
+        axes[0,1].pie([float(str(v).replace('$', '').replace(',', '')) for v in demo_df['value']], 
+                     labels=demo_df['demo'].str.replace('DEMO_', ''), autopct='%1.1f%%')
+        axes[0,1].set_title('Демографическое распределение')
+    
+    # 3. Продукты
+    if product_data:
+        product_df = pd.DataFrame(list(product_data.items()), columns=['product', 'value'])
+        axes[0,2].barh(range(len(product_df)), 
+                      [float(str(v).replace('$', '').replace(',', '')) for v in product_df['value']],
+                      color='lightgreen')
+        axes[0,2].set_title('Продуктовый анализ')
+        axes[0,2].set_xlabel('Выручка ($)')
+    
+    # 4. Метрики
+    if metric_data:
+        metric_df = pd.DataFrame(list(metric_data.items()), columns=['metric', 'value'])
+        axes[1,0].bar(range(len(metric_df)), [float(str(v).replace('$', '')) for v in metric_df['value']],
+                     color='gold')
+        axes[1,0].set_title('Бизнес-метрики')
+        axes[1,0].set_ylabel('Значение')
+    
+    # 5. Сегменты
+    if segment_data:
+        segment_counts = {}
+        for key in segment_data.keys():
+            segment_type = key.split('_')[1]
+            segment_counts[segment_type] = segment_counts.get(segment_type, 0) + 1
+        
+        axes[1,1].bar(segment_counts.keys(), segment_counts.values(), color='lightcoral')
+        axes[1,1].set_title('Сегментация клиентов')
+        axes[1,1].set_ylabel('Количество сегментов')
+    
+    # 6. Сводная информация
+    axes[1,2].text(0.1, 0.9, 'СВОДКА MULTIPLE OUTPUTS:', fontsize=12, fontweight='bold')
+    axes[1,2].text(0.1, 0.7, f'Тренды: {len(trend_data)}', fontsize=10)
+    axes[1,2].text(0.1, 0.6, f'Демография: {len(demo_data)}', fontsize=10)
+    axes[1,2].text(0.1, 0.5, f'Продукты: {len(product_data)}', fontsize=10)
+    axes[1,2].text(0.1, 0.4, f'Метрики: {len(metric_data)}', fontsize=10)
+    axes[1,2].text(0.1, 0.3, f'Сегменты: {len(segment_data)}', fontsize=10)
+    axes[1,2].axis('off')
+    axes[1,2].set_title('Статистика выходных данных')
+    
+    plt.tight_layout()
+    plt.savefig('/scripts/multiple_outputs_analysis.png', dpi=100, bbox_inches='tight')
+    plt.close()
+    
+    print("График сохранен: multiple_outputs_analysis.png")
+    
+    print("\n" + "="*80)
+    print("АНАЛИЗ MULTIPLE OUTPUTS")
+    print("="*80)
+    print(f"Всего сгенерировано {len(results)} различных метрик")
+    print(f"Типы анализа: Тренды ({len(trend_data)}), Демография ({len(demo_data)}), "
+          f"Продукты ({len(product_data)}), Метрики ({len(metric_data)}), "
+          f"Сегменты ({len(segment_data)})")
+
+if __name__ == '__main__':
+    visualize_multiple_outputs()
+    
+</details>
+
 ### **`visualize_composite_keys.py`
 ```python
 #!/usr/bin/env python3
@@ -835,7 +944,7 @@ feh composite_keys_analysis.png
 ### **3. `multiple_outputs.py` - MULTIPLE OUTPUTS**
 ```python
 """
-📚 ТЕОРЕТИЧЕСКАЯ ОСНОВА: Multiple Outputs - единый проход для всей аналитики
+ТЕОРЕТИЧЕСКАЯ ОСНОВА: Multiple Outputs - единый проход для всей аналитики
 
 ПРОБЛЕМА: Разные типы аналитики требуют разных форматов вывода
 
@@ -846,12 +955,98 @@ feh composite_keys_analysis.png
 ├── METRIC_AVG_RECEIPT → $85.20
 └── SEGMENT_HIGH_VALUE_Male_25-34 → $45,000
 
-🔧 ТЕХНИКА:
+ТЕХНИКА:
 - Разные префиксы ключей = разные типы аналитики
 - Единый проход по данным
 - Раздельная обработка в reducer
 """
 ```
+**Создаем `multiple_outputs.py`:**
+```python
+#!/usr/bin/env python3
+from mrjob.job import MRJob
+from datetime import datetime
+import json
+
+class MultipleOutputsAnalysis(MRJob):
+
+    def mapper(self, _, line):
+        if 'Transaction ID' in line:
+            return
+            
+        parts = line.split(',')
+        if len(parts) >= 9:
+            try:
+                date_str = parts[1].strip()
+                gender = parts[3].strip()
+                age = int(parts[4])
+                category = parts[5].strip()
+                quantity = int(parts[6])
+                price_per_unit = float(parts[7])
+                total_amount = float(parts[8])
+                
+                date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+                year_month = date_obj.strftime('%Y-%m')
+                age_group = self.get_age_group(age)
+                
+                # MULTIPLE OUTPUTS В ОДНОМ MAPPER
+                
+                # 1. ВЫХОД: Временные тренды
+                yield f"TREND_MONTHLY_{year_month}", total_amount
+                yield f"TREND_MONTHLY_COUNT_{year_month}", 1
+                
+                # 2. ВЫХОД: Демография
+                yield f"DEMO_GENDER_{gender}", total_amount
+                yield f"DEMO_AGE_{age_group}", total_amount
+                
+                # 3. ВЫХОД: Продуктовый анализ
+                yield f"PRODUCT_{category}_REVENUE", total_amount
+                yield f"PRODUCT_{category}_QUANTITY", quantity
+                yield f"PRODUCT_{category}_AVG_PRICE", price_per_unit
+                
+                # 4. ВЫХОД: Метрики эффективности
+                yield f"METRIC_AVG_RECEIPT", total_amount
+                yield f"METRIC_TOTAL_QUANTITY", quantity
+                yield f"METRIC_UNIQUE_CATEGORIES", category
+                
+                # 5. ВЫХОД: Сегменты покупателей
+                if total_amount > 200:
+                    yield f"SEGMENT_HIGH_VALUE_{gender}_{age_group}", total_amount
+                elif total_amount > 100:
+                    yield f"SEGMENT_MEDIUM_VALUE_{gender}_{age_group}", total_amount
+                else:
+                    yield f"SEGMENT_LOW_VALUE_{gender}_{age_group}", total_amount
+                    
+            except (ValueError, IndexError) as e:
+                self.increment_counter('errors', 'parsing_error', 1)
+
+    def get_age_group(self, age):
+        if age <= 24: return "18-24"
+        elif age <= 34: return "25-34"
+        elif age <= 44: return "35-44"
+        elif age <= 54: return "45-54"
+        else: return "55+"
+
+    def reducer(self, key, values):
+        values_list = list(values)
+        
+        if "COUNT" in key:
+            count = sum(values_list)
+            yield key, count
+        elif "AVG_PRICE" in key or "AVG_RECEIPT" in key:
+            avg = sum(values_list) / len(values_list)
+            yield key, f"${avg:.2f}"
+        elif "UNIQUE" in key:
+            unique_count = len(set(values_list))
+            yield key, unique_count
+        else:
+            total = sum(values_list)
+            yield key, f"${total:,.2f}"
+
+if __name__ == '__main__':
+    MultipleOutputsAnalysis.run()
+``` 
+</details>
 
 ### **4. `real_price_elasticity.py` - ЦЕНОВАЯ ЭЛАСТИЧНОСТЬ**
 ```python
