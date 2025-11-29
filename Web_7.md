@@ -34,9 +34,7 @@
 ```
 
 ### **Продажи по месяцам и категориям** Исправить
-```
-![Анализ продаж по месяцам](sales-chart.png)
-```
+
 ![Анализ продаж по месяцам](https://github.com/RShoose/Big_data/blob/main/sales-chart.png)
 
 ---
