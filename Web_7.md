@@ -125,18 +125,7 @@ METRICS = {
 ![Сегментация покупателей](https://github.com/RShoose/Big_data/raw/main/segment.png)
 
 ### **Кейс 3: Эффективность маркетинга**
-```
-ROI ПО КАНАЛАМ ПРОДАЖ
-Online   ██████████████ 45%  | $2.10 ROI
-Mobile   ██████████ 32%  | $1.80 ROI
-Store    ██████ 23%  | $1.20 ROI
-
- ЦЕЛЕВЫЕ АУДИТОРИИ по какой метрике
-Electronics: Male 25-34 ██████████
-Clothing: Female 18-29 ████████████  
-Books: Mixed 25-45 ████████
-Home: Female 35-55 ██████
-```
+![Анализ бизнес-показателей](https://github.com/RShoose/Big_data/raw/main/business.png)
 
 ---
 
