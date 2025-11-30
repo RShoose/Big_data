@@ -122,19 +122,7 @@ METRICS = {
 ![Средние продажи по периодам](https://github.com/RShoose/Big_data/raw/main/avg_sales.png)
 
 ### **Кейс 2: Сегментация покупателей**
-```
-СЕГМЕНТАЦИЯ ПОКУПАТЕЛЕЙ
-High-Value    ██████████ 18%  | $500+ avg
-Medium-Value  ██████████████ 25%  | $200-500  
-Low-Value     ██████████████████ 35% | $50-200
-Occasional    ███████████ 22%  | <$50
-
-ВОЗРАСТНЫЕ СЕГМЕНТЫ
-18-24: ██████ 20%   | Tech-savvy, impulse buys
-25-34: ████████████ 35%   | Family needs, value
-35-44: ██████████ 28%   | Quality focused  
-45+:   █████ 17%   | Brand loyal, traditional
-```
+![Сегментация покупателей](https://github.com/RShoose/Big_data/raw/main/segment.png)
 
 ### **Кейс 3: Эффективность маркетинга**
 ```
