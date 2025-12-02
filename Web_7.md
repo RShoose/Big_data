@@ -1483,6 +1483,8 @@ def main():
 if __name__ == '__main__':
     main()
 ```
+
+
 ```bash
 docker cp real_price_elasticity.py namenode:/scripts/
 docker cp visualize_real_price_elasticity.py namenode:/scripts/
@@ -1495,6 +1497,7 @@ python3 visualize_real_price_elasticity.py
 docker cp namenode:/scripts/price_elasticity_analysis.png ./
 feh price_elasticity_analysis.png
 ```
+
 </details>
 
 ### **5. `demographic_category_analysis.py` - МНОГОМЕРНАЯ ГРУППИРОВКА**
