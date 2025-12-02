@@ -943,7 +943,7 @@ def main():
 
 if __name__ == '__main__':
     main()
-```
+```bash
 # 1. Копируем скрипты в контейнер
 docker cp composite_keys.py namenode:/scripts/
 docker cp visualize_composite_keys.py namenode:/scripts/
@@ -968,7 +968,7 @@ docker cp namenode:/scripts/composite_keys_analysis.png ./
 
 # 7. Смотрим график
 feh composite_keys_analysis.png
-
+```
 </details>
 
 ### **3. `multiple_outputs.py` - MULTIPLE OUTPUTS**
