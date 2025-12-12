@@ -1,6 +1,7 @@
 ```markdown
 # Подготовка данных для Hadoop-Hive кластера
 
+[Источник](https://www.kaggle.com/datasets/mikhailklemin/kinopoisks-movies-reviews)
 ## Обзор
 Инструкция по подготовке текстовых данных (TXT файлов) из вашей Windows папки для использования в Hadoop-Hive кластере.
 
@@ -116,3 +117,4 @@ find data/lecture_reviews -name "*.txt" | wc -l
 ```
 
 ```
+
