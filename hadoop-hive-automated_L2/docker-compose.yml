@@ -1,0 +1,28 @@
+services:
+  namenode-lecture:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: namenode-lecture
+    ports:
+      - "9871:9870"
+    environment:
+      - CLUSTER_NAME=test
+
+  datanode-lecture:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode-lecture
+    depends_on:
+      - namenode-lecture
+    environment:
+      - CORE_CONF_fs_defaultFS=hdfs://namenode-lecture:8020
+
+  hive-lecture:
+    image: hive-derby:latest
+    container_name: hive-lecture
+    depends_on:
+      - namenode-lecture
+      - datanode-lecture
+    volumes:
+      - ./guava-27.0-jre.jar:/host/guava.jar:ro
+      - ./data:/data:ro
+    ports:
+      - "10001:10000"

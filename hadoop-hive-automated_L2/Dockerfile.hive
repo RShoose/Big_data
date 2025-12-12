@@ -1,0 +1,26 @@
+FROM bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+
+# Копируем Hive и guava
+COPY apache-hive-2.3.9-bin.tar.gz /tmp/
+COPY guava-27.0-jre.jar /tmp/
+
+RUN tar -xzf /tmp/apache-hive-2.3.9-bin.tar.gz -C /opt && \
+    mv /opt/apache-hive-2.3.9-bin /opt/hive && \
+    rm /tmp/apache-hive-2.3.9-bin.tar.gz
+
+# Фиксим guava - удаляем все, ставим 27.0-jre из /tmp
+RUN rm -f /opt/hive/lib/guava-*.jar && \
+    rm -f /opt/hadoop-3.2.1/share/hadoop/*/lib/guava-*.jar 2>/dev/null || true && \
+    cp /tmp/guava-27.0-jre.jar /opt/hive/lib/ && \
+    cp /tmp/guava-27.0-jre.jar /opt/hadoop-3.2.1/share/hadoop/common/lib/
+
+ENV HADOOP_HOME=/opt/hadoop-3.2.1
+ENV HIVE_HOME=/opt/hive
+ENV PATH=$HIVE_HOME/bin:$HADOOP_HOME/bin:$PATH
+
+RUN mkdir -p /opt/hive/conf
+
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
