@@ -177,7 +177,7 @@ CREATE EXTERNAL TABLE raw_reviews_external (
 )
 PARTITIONED BY (sentiment STRING)
 ROW FORMAT DELIMITED
-FIELDS TERMINATED BY '/n'  -- разделитель полей
+FIELDS TERMINATED BY '\n'  -- разделитель полей
 STORED AS TEXTFILE
 LOCATION '/data/lecture_reviews';
 
@@ -642,3 +642,4 @@ LIMIT 5;
 -- Проверка размера таблиц
 dfs -du -h /user/hive/warehouse/reviews_analysis.db/;
 ```
+
