@@ -3,7 +3,7 @@
 
 ## Обзор набора данных
 
-Этот набор данных содержит пользовательские отзывы о фильмах с российского сайта **Kinopoisk.ru** на русском языке. Набор данных был создан и загружен на Kaggle пользователем [Данные]((https://www.kaggle.com/datasets/mikhailklemin/kinopoisks-movies-reviews)).
+Этот набор данных содержит пользовательские отзывы о фильмах с российского сайта **Kinopoisk.ru** на русском языке. Набор данных был создан и загружен на Kaggle пользователем [Данные](https://www.kaggle.com/datasets/mikhailklemin/kinopoisks-movies-reviews).
 
 ---
 
@@ -142,6 +142,7 @@ head -3 data/lecture_reviews/pos/*.txt
 # Подсчет файлов
 find data/lecture_reviews -name "*.txt" | wc -l
 ```
+
 
 
 
