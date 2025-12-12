@@ -640,6 +640,7 @@ WHERE sentiment = 'pos'
 LIMIT 5;
 
 -- Проверка размера таблиц
-dfs -du -h /user/hive/warehouse/reviews_analysis.db/;
+dfs -du -h /user/hive/warehouse/reviews_analysis_text.db/;
 ```
+
 
