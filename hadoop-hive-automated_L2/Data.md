@@ -118,8 +118,6 @@ echo "Копирование завершено!"
 ### Шаг 5: Проверьте результат
 
 ```bash
-echo ""
-echo "=== РЕЗУЛЬТАТ ==="
 echo "Структура данных:"
 tree "$LECTURE_DATA" 2>/dev/null || ls -laR "$LECTURE_DATA"
 
@@ -142,6 +140,7 @@ head -3 data/lecture_reviews/pos/*.txt
 # Подсчет файлов
 find data/lecture_reviews -name "*.txt" | wc -l
 ```
+
 
 
 
