@@ -16,11 +16,8 @@ MY_DATA_PATH="/mnt/d/ваша_папка/с_данными/dataset"
 
 Например:
 ```bash
-MY_DATA_PATH="/mnt/d/SF/BD/Inf_BD2/data/lecture_reviews_marked"
-# ИЛИ
 MY_DATA_PATH="/mnt/c/Users/ваше_имя/Documents/dataset"
 ```
-D:\SF\BD\Inf_BD2\data\lecture_reviews_marked
 
 ### Шаг 2: Проверьте путь
 
@@ -117,4 +114,5 @@ head -3 data/lecture_reviews/pos/*.txt
 # Подсчет файлов
 find data/lecture_reviews -name "*.txt" | wc -l
 ```
+
 ```
